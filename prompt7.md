@@ -1,0 +1,2 @@
+Add a senderColors map (Record<string, string>) prop, assigning each non-"me" sender a consistent color from a WhatsApp-style name-color palette (pinks, oranges, teals, purples — never WhatsApp's own outgoing-bubble green).
+Pass senderColor + computed isFirstInGroup into MessageBubble and TypingIndicator correctly per the grouping logic from Prompt 6.
