@@ -42,13 +42,13 @@ export default function MessageBubble({
   return (
     <div
       className={`flex ${outgoing ? "justify-end" : "justify-start"}`}
-      style={{ marginTop: isFirstInGroup ? 8 : 2 }}
+      style={{ marginTop: isFirstInGroup ? 20 : 6 }}
     >
       <div
-        className={`relative max-w-[min(65%,620px)] ${
+        className={`relative max-w-[min(72%,900px)] ${
           emojiOnly
             ? ""
-            : `rounded-lg shadow-[0_1px_0.5px_rgba(11,20,26,0.13)] ${
+            : `rounded-2xl shadow-[0_1px_0.5px_rgba(11,20,26,0.13)] ${
                 outgoing ? "bg-[#d9fdd3]" : "bg-white"
               } ${
                 isFirstInGroup
@@ -62,10 +62,10 @@ export default function MessageBubble({
         {/* Tail: only on the first bubble of a group */}
         {!emojiOnly && isFirstInGroup ? <Tail outgoing={outgoing} /> : null}
 
-        <div className={emojiOnly ? "" : "px-2.5 py-1.5"}>
+        <div className={emojiOnly ? "" : "px-6 py-4"}>
           {senderName && isFirstInGroup && !outgoing ? (
             <div
-              className="text-[15px] font-bold leading-tight"
+              className="text-[32px] font-bold leading-tight"
               style={{ color: senderColor ?? "#00a884" }}
             >
               {senderName}
@@ -77,13 +77,13 @@ export default function MessageBubble({
               <Image
                 src={image}
                 alt=""
-                width={340}
-                height={340}
+                width={420}
+                height={420}
                 unoptimized
-                className="h-auto w-[340px] rounded-md object-cover"
+                className="h-auto w-[420px] rounded-md object-cover"
               />
               {text ? (
-                <span className="mt-1 block whitespace-pre-wrap break-words text-[17px] font-medium leading-[24px] text-[#111b21]">
+                <span className="mt-2 block whitespace-pre-wrap break-words text-[44px] font-bold leading-[58px] text-[#111b21]">
                   {text}
                   <Meta
                     timestamp={timestamp}
@@ -93,15 +93,15 @@ export default function MessageBubble({
                   />
                 </span>
               ) : (
-                <span className="absolute bottom-2 right-1.5 flex items-center rounded bg-black/40 px-1.5 py-0.5 text-[12px] leading-[15px] text-white [&_svg]:text-white">
+                <span className="absolute bottom-3 right-3 flex items-center rounded bg-black/45 px-2.5 py-1 text-[24px] font-semibold leading-[28px] text-white [&_svg]:text-white">
                   {timestamp}
                   {outgoing ? <Ticks status={status} /> : null}
                 </span>
               )}
             </div>
           ) : isDeleted ? (
-            <span className="inline-flex items-center gap-1.5 text-[16px] font-medium italic text-[#8696a0]">
-              <Ban className="h-4 w-4 shrink-0" strokeWidth={1.8} />
+            <span className="inline-flex items-center gap-3 text-[36px] font-bold italic text-[#8696a0]">
+              <Ban className="h-9 w-9 shrink-0" strokeWidth={2} />
               This message was deleted
               <Meta
                 timestamp={timestamp}
@@ -111,7 +111,7 @@ export default function MessageBubble({
               />
             </span>
           ) : emojiOnly ? (
-            <span className="inline-block text-[3rem] leading-tight">
+            <span className="inline-block text-[7rem] leading-tight">
               {text}
               <Meta
                 timestamp={timestamp}
@@ -121,7 +121,7 @@ export default function MessageBubble({
               />
             </span>
           ) : (
-            <span className="whitespace-pre-wrap break-words text-[17px] font-medium leading-[24px] text-[#111b21]">
+            <span className="whitespace-pre-wrap break-words text-[44px] font-bold leading-[58px] text-[#111b21]">
               {text}
               <Meta
                 timestamp={timestamp}
@@ -154,7 +154,7 @@ function Meta({
 }) {
   return (
     <span
-      className={`ml-2 inline-block h-[15px] translate-y-[3px] select-none whitespace-nowrap align-bottom text-[12px] leading-[15px] text-[#667781] ${
+      className={`ml-4 inline-block h-[28px] translate-y-[6px] select-none whitespace-nowrap align-bottom text-[24px] font-semibold leading-[28px] text-[#667781] ${
         inline ? "float-right" : ""
       }`}
     >
@@ -169,7 +169,7 @@ function Ticks({ status }: { status: MessageStatus }) {
   return (
     <svg
       viewBox="0 0 18 12"
-      className={`ml-1 inline-block h-[15px] w-4 align-[-3px] ${
+      className={`ml-2 inline-block h-[28px] w-8 align-[-5px] ${
         blue ? "text-[#53bdeb]" : "text-[#8696a0]"
       }`}
       fill="none"
@@ -189,8 +189,8 @@ export function Tail({ outgoing }: { outgoing: boolean }) {
   return (
     <svg
       viewBox="0 0 8 13"
-      className={`absolute top-0 h-[13px] w-2 ${
-        outgoing ? "right-[-8px] text-[#d9fdd3]" : "left-[-8px] text-white"
+      className={`absolute top-0 h-[28px] w-[18px] ${
+        outgoing ? "right-[-18px] text-[#d9fdd3]" : "left-[-18px] text-white"
       }`}
       aria-hidden
     >

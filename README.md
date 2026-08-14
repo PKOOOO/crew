@@ -35,3 +35,21 @@ The easiest way to deploy your Next.js app is to use the [Vercel Platform](https
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
 # crew
+
+## Running the show
+
+Two URLs:
+
+- **`/`** — the projector screen. Open it on the machine driving the projector
+  and tap once to enable sound. Nothing else is shown on it.
+- **`/control`** — the phone remote. Prev / Replay / Next plus the full scene
+  list for jumping straight to any scene.
+
+Cues travel phone → Supabase Realtime → projector; the Vercel backend is not
+involved once the pages have loaded. Set `NEXT_PUBLIC_SUPABASE_URL` and
+`NEXT_PUBLIC_SUPABASE_ANON_KEY` (see `.env.example`) for cross-device control.
+Without them, control still works between two windows of the same browser.
+
+**Backup:** the projector screen also responds to the keyboard — `→` or space
+for next, `←` for previous, `R` to replay the current scene. Use this if the
+phone or the network fails mid-performance.

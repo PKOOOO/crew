@@ -17,6 +17,7 @@ type Banner = {
   from: string;
   preview: string;
   status: "delivered" | "read" | "missed" | null;
+  statusLabel?: string;
 };
 
 const STATUS_LABEL: Record<NonNullable<Banner["status"]>, string> = {
@@ -89,7 +90,7 @@ export default function LockscreenScreen({
         setBanners((previous) =>
           previous.map((banner) =>
             banner.id === event.targetNotificationId
-              ? { ...banner, status: event.status }
+              ? { ...banner, status: event.status, statusLabel: event.label }
               : banner,
           ),
         );
@@ -173,7 +174,7 @@ export default function LockscreenScreen({
                 </div>
                 {banner.status ? (
                   <div className="mt-0.5 text-[14px] font-medium text-white/60">
-                    {STATUS_LABEL[banner.status]}
+                    {banner.statusLabel ?? STATUS_LABEL[banner.status]}
                   </div>
                 ) : null}
               </div>

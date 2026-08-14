@@ -1,125 +1,173 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { scenesSample } from "@/lib/scenes-sample";
 import {
-  SCENE_CHANNEL_NAME,
-  type SceneSyncMessage,
+  hasRealtime,
+  useSceneChannel,
+  type SyncMessage,
 } from "@/lib/scene-sync";
-import PhoneFrame from "@/components/PhoneFrame";
 
 const APP_BADGE: Record<string, string> = {
-  whatsapp: "bg-[#d9fdd3] text-[#0b5f4a]",
-  tiktok: "bg-[#fde3ea] text-[#a51236]",
-  notes: "bg-[#fdf3d9] text-[#8a6a10]",
-  lockscreen: "bg-[#e3e9fd] text-[#2b3f8a]",
+  whatsapp: "bg-[#0b5f4a] text-[#d9fdd3]",
+  chatlist: "bg-[#0b5f4a] text-[#d9fdd3]",
+  groupinfo: "bg-[#0b5f4a] text-[#d9fdd3]",
+  tiktok: "bg-[#7a0f28] text-[#ffd7e0]",
+  notes: "bg-[#6a5210] text-[#fdf3d9]",
+  lockscreen: "bg-[#22306b] text-[#dbe3ff]",
 };
 
+/** Phone remote. Big touch targets, no video preview. */
 export default function ControlPage() {
   const [activeSceneIndex, setActiveSceneIndex] = useState(0);
-  // Bumped on every action so the preview remounts and replays.
-  const [playNonce, setPlayNonce] = useState(0);
-  const channelRef = useRef<BroadcastChannel | null>(null);
+  const [nonce, setNonce] = useState(0);
+  /** What the projector last reported. */
+  const [displaySceneIndex, setDisplaySceneIndex] = useState<number | null>(
+    null,
+  );
+  const [sceneFinished, setSceneFinished] = useState(false);
 
-  useEffect(() => {
-    const channel = new BroadcastChannel(SCENE_CHANNEL_NAME);
-    channelRef.current = channel;
-    return () => {
-      channelRef.current = null;
-      channel.close();
-    };
+  const handleMessage = useCallback((message: SyncMessage) => {
+    if (message.kind !== "state") return;
+    setDisplaySceneIndex(message.sceneIndex);
+    setSceneFinished(message.finished);
   }, []);
 
-  const go = (index: number, action: SceneSyncMessage["action"]) => {
+  const { send, status } = useSceneChannel(handleMessage);
+  const sendRef = useRef(send);
+  useEffect(() => {
+    sendRef.current = send;
+  }, [send]);
+
+  /* Ask the projector what it is showing, once we are connected. */
+  useEffect(() => {
+    if (status !== "online" && status !== "local-only") return;
+    const timer = setTimeout(() => sendRef.current({ kind: "request" }), 400);
+    return () => clearTimeout(timer);
+  }, [status]);
+
+  const cue = (index: number, action: "play" | "next" | "prev" | "replay") => {
     const clamped = Math.max(0, Math.min(scenesSample.length - 1, index));
     setActiveSceneIndex(clamped);
-    setPlayNonce((nonce) => nonce + 1);
-    const message: SceneSyncMessage = { activeSceneIndex: clamped, action };
-    channelRef.current?.postMessage(message);
+    setSceneFinished(false);
+    const next = nonce + 1;
+    setNonce(next);
+    send({ kind: "cue", sceneIndex: clamped, nonce: next, action });
+    if (typeof navigator !== "undefined" && navigator.vibrate) {
+      navigator.vibrate(12);
+    }
   };
 
-  const scene = scenesSample[activeSceneIndex] ?? scenesSample[0];
-  if (!scene) return null;
+  const scene = scenesSample[activeSceneIndex];
+  const onDisplay =
+    displaySceneIndex !== null ? scenesSample[displaySceneIndex] : undefined;
+
+  const statusLabel =
+    status === "online"
+      ? "Connected"
+      : status === "connecting"
+        ? "Connecting…"
+        : status === "local-only"
+          ? hasRealtime
+            ? "Local only"
+            : "Same device only"
+          : "Connection error";
+
+  const statusColor =
+    status === "online"
+      ? "bg-[#25d366]"
+      : status === "error"
+        ? "bg-[#f15c6d]"
+        : "bg-[#f5a623]";
 
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-[#111b21] text-white">
-      {/* Scene list */}
-      <aside className="flex h-full w-[340px] shrink-0 flex-col border-r border-white/10">
-        <div className="shrink-0 border-b border-white/10 px-4 py-3">
-          <h1 className="text-[15px] font-semibold">Operator — scene control</h1>
-          <p className="mt-0.5 text-[12px] text-white/50">
-            Open <span className="font-mono">/display</span> on the projector.
-          </p>
+    <div className="flex h-[100dvh] w-full flex-col overflow-hidden bg-[#0b0f13] text-white">
+      {/* Header: connection + what the projector is showing */}
+      <header className="shrink-0 border-b border-white/10 px-4 pb-3 pt-4">
+        <div className="flex items-center justify-between">
+          <h1 className="text-[17px] font-semibold">Scene remote</h1>
+          <span className="flex items-center gap-2 text-[13px] text-white/60">
+            <span className={`h-2.5 w-2.5 rounded-full ${statusColor}`} />
+            {statusLabel}
+          </span>
         </div>
+        <p className="mt-1 truncate text-[13px] text-white/50">
+          {onDisplay
+            ? `On screen: ${onDisplay.label}`
+            : "On screen: waiting for the projector…"}
+        </p>
+      </header>
 
-        <div className="min-h-0 flex-1 overflow-y-auto py-2">
-          {scenesSample.map((item, index) => (
+      {/* Scene list */}
+      <div className="min-h-0 flex-1 overflow-y-auto py-1">
+        {scenesSample.map((item, index) => {
+          const isSelected = index === activeSceneIndex;
+          const isLive = index === displaySceneIndex;
+          return (
             <button
               key={item.id}
               type="button"
-              onClick={() => go(index, "play")}
-              className={`flex w-full items-center gap-2 px-4 py-2.5 text-left ${
-                index === activeSceneIndex
-                  ? "bg-[#00a884]/20"
-                  : "hover:bg-white/5"
+              onClick={() => cue(index, "play")}
+              className={`flex w-full items-center gap-3 border-b border-white/5 px-4 py-3.5 text-left ${
+                isLive ? "bg-[#00a884]/20" : isSelected ? "bg-white/5" : ""
               }`}
             >
+              <span className="w-6 shrink-0 text-[13px] tabular-nums text-white/40">
+                {index + 1}
+              </span>
               <span
-                className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase ${
-                  APP_BADGE[item.appType] ?? ""
+                className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold uppercase ${
+                  APP_BADGE[item.appType] ?? "bg-white/10"
                 }`}
               >
                 {item.appType}
               </span>
-              <span className="min-w-0 flex-1 truncate text-[13px]">
+              <span className="min-w-0 flex-1 truncate text-[14px]">
                 {item.label}
               </span>
-              <span className="shrink-0 text-[11px] text-white/40">
-                {item.events.length} ev
-              </span>
+              {isLive ? (
+                <span className="shrink-0 text-[11px] font-bold text-[#25d366]">
+                  LIVE
+                </span>
+              ) : null}
             </button>
-          ))}
-        </div>
-      </aside>
+          );
+        })}
+      </div>
 
-      {/* Transport + live preview */}
-      <main className="flex min-w-0 flex-1 flex-col items-center overflow-hidden">
-        <div className="flex w-full shrink-0 items-center justify-center gap-3 border-b border-white/10 px-4 py-3">
+      {/* Transport — thumb-sized, pinned to the bottom */}
+      <div className="shrink-0 border-t border-white/10 px-3 pb-[max(12px,env(safe-area-inset-bottom))] pt-3">
+        <p className="mb-2 truncate text-center text-[13px] text-white/50">
+          {scene ? `${activeSceneIndex + 1}. ${scene.label}` : ""}
+        </p>
+        <div className="flex items-center gap-2.5">
           <button
             type="button"
-            onClick={() => go(activeSceneIndex - 1, "prev")}
+            onClick={() => cue(activeSceneIndex - 1, "prev")}
             disabled={activeSceneIndex === 0}
-            className="rounded border border-white/20 px-4 py-1.5 text-[13px] hover:bg-white/10 disabled:opacity-30"
+            className="h-16 flex-1 rounded-2xl border border-white/20 text-[17px] font-semibold active:bg-white/10 disabled:opacity-25"
           >
-            ← Previous Scene
+            ‹ Prev
           </button>
           <button
             type="button"
-            onClick={() => go(activeSceneIndex, "play")}
-            className="rounded bg-[#00a884] px-5 py-1.5 text-[13px] font-medium hover:bg-[#029176]"
+            onClick={() => cue(activeSceneIndex, "replay")}
+            className="h-16 flex-1 rounded-2xl border border-white/20 text-[17px] font-semibold active:bg-white/10"
           >
-            Replay Scene
+            ↻ Replay
           </button>
           <button
             type="button"
-            onClick={() => go(activeSceneIndex + 1, "next")}
+            onClick={() => cue(activeSceneIndex + 1, "next")}
             disabled={activeSceneIndex === scenesSample.length - 1}
-            className="rounded border border-white/20 px-4 py-1.5 text-[13px] hover:bg-white/10 disabled:opacity-30"
+            className={`h-16 flex-[1.4] rounded-2xl bg-[#00a884] text-[19px] font-bold active:bg-[#029176] disabled:opacity-40 ${
+              sceneFinished ? "animate-pulse" : ""
+            }`}
           >
-            Next Scene →
+            Next ›
           </button>
         </div>
-
-        <div className="flex min-h-0 flex-1 items-start justify-center overflow-hidden pt-4">
-          <div className="origin-top scale-[0.6]">
-            <PhoneFrame
-              key={`${activeSceneIndex}:${playNonce}`}
-              scene={scene}
-              autoStart
-            />
-          </div>
-        </div>
-      </main>
+      </div>
     </div>
   );
 }

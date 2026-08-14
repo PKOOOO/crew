@@ -1,6 +1,12 @@
 import type { ChatEvent } from "@/types/chat";
 
-export type AppType = "whatsapp" | "tiktok" | "notes" | "lockscreen";
+export type AppType =
+  | "whatsapp"
+  | "chatlist"
+  | "groupinfo"
+  | "tiktok"
+  | "notes"
+  | "lockscreen";
 
 export type TikTokEvent =
   | {
@@ -22,6 +28,36 @@ export type TikTokEvent =
       text: string;
     };
 
+export type ChatListEvent = {
+  /** One chat row in the list, revealed after delay. */
+  type: "chat";
+  name: string;
+  preview: string;
+  time: string;
+  /** A missed call row shows the red missed-call arrow instead of ticks. */
+  kind?: "message" | "missed-call";
+  /** Ticks on the row's preview: grey = delivered but never opened. */
+  ticks?: "none" | "sent" | "delivered" | "read";
+  unreadCount?: number;
+  /** Sound + emphasis as the row lands. */
+  highlight?: boolean;
+  delay: number;
+};
+
+export type GroupInfoEvent = {
+  /** One member row, revealed after delay. */
+  type: "member";
+  name: string;
+  /** "Online", "last seen today at 21:31", … */
+  status: string;
+  isAdmin?: boolean;
+  /** Renders as "You" with the member-tag line. */
+  isYou?: boolean;
+  /** Draws attention (sound + emphasis) — used for the last-seen reveal. */
+  highlight?: boolean;
+  delay: number;
+};
+
 export type NotesEvent =
   | {
       /** Reveals text character-by-character at charDelayMs per character. */
@@ -37,6 +73,15 @@ export type NotesEvent =
   | {
       /** Erases the current text character-by-character over duration. */
       type: "delete";
+      duration: number;
+    }
+  | {
+      /**
+       * A pile of past entries that scrolls rapidly up the screen, slowing to
+       * linger on the last one.
+       */
+      type: "drafts";
+      items: string[];
       duration: number;
     };
 
@@ -54,6 +99,8 @@ export type LockscreenEvent =
       type: "status";
       targetNotificationId: string;
       status: "delivered" | "read" | "missed";
+      /** Overrides the default status wording, e.g. "Read 11:43 PM". */
+      label?: string;
       delay: number;
     };
 
@@ -72,6 +119,22 @@ export type Scene =
       events: ChatEvent[];
       /** Chat header name; falls back to the scene label. */
       chatName?: string;
+      /** Whose phone this is; defaults to "Maya". */
+      selfName?: string;
+    })
+  | (SceneBase & {
+      appType: "chatlist";
+      events: ChatListEvent[];
+      /** Counts shown in the filter pills. */
+      unreadTotal?: number;
+      groupTotal?: number;
+    })
+  | (SceneBase & {
+      appType: "groupinfo";
+      events: GroupInfoEvent[];
+      groupName?: string;
+      /** Total shown in the "Group · N members" line; defaults to row count. */
+      memberCount?: number;
     })
   | (SceneBase & { appType: "tiktok"; events: TikTokEvent[]; username?: string })
   | (SceneBase & { appType: "notes"; events: NotesEvent[]; dark?: boolean })

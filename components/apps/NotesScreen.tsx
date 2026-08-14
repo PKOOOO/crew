@@ -63,6 +63,9 @@ export default function NotesScreen({
   onFinished,
 }: NotesScreenProps) {
   const [text, setText] = useState("");
+  /** Past entries for the "drafts scroll" beat. */
+  const [entries, setEntries] = useState<string[]>([]);
+  const listRef = useRef<HTMLDivElement>(null);
   const [dark, setDark] = useState(darkInitial);
   const onFinishedRef = useRef(onFinished);
   const clickRef = useRef<ReturnType<typeof makeClicker> | null>(null);
@@ -88,6 +91,7 @@ export default function NotesScreen({
     const play = async () => {
       let current = "";
       setText(current);
+      setEntries([]);
 
       for (const event of events) {
         if (cancelled) return;
@@ -105,6 +109,38 @@ export default function NotesScreen({
 
         if (event.type === "pause") {
           await wait(event.duration);
+          continue;
+        }
+
+        if (event.type === "drafts") {
+          // Hundreds of unsent drafts rush past, then slow to the last one.
+          setEntries(event.items);
+          setText("");
+          await wait(80);
+          if (cancelled) return;
+
+          await new Promise<void>((resolve) => {
+            const list = listRef.current;
+            if (!list) {
+              resolve();
+              return;
+            }
+            const distance = list.scrollHeight - list.clientHeight;
+            const startedAt = performance.now();
+            const step = (now: number) => {
+              if (cancelled) {
+                resolve();
+                return;
+              }
+              const progress = Math.min(1, (now - startedAt) / event.duration);
+              // Ease-out cubic: fast at first, lingering at the end.
+              const eased = 1 - Math.pow(1 - progress, 3);
+              list.scrollTop = distance * eased;
+              if (progress < 1) requestAnimationFrame(step);
+              else resolve();
+            };
+            requestAnimationFrame(step);
+          });
           continue;
         }
 
@@ -144,7 +180,9 @@ export default function NotesScreen({
       {/* Minimal header: app name + background toggle */}
       <div className="mb-6 flex shrink-0 items-center justify-between">
         <span
-          className={`text-[13px] ${dark ? "text-[#8e8e93]" : "text-[#8e8e93]"}`}
+          className={`text-[20px] font-medium ${
+            dark ? "text-[#8e8e93]" : "text-[#8e8e93]"
+          }`}
         >
           Notes
         </span>
@@ -159,24 +197,50 @@ export default function NotesScreen({
           }`}
         >
           {dark ? (
-            <Sun className="h-4 w-4" strokeWidth={1.8} />
+            <Sun className="h-6 w-6" strokeWidth={1.8} />
           ) : (
-            <Moon className="h-4 w-4" strokeWidth={1.8} />
+            <Moon className="h-6 w-6" strokeWidth={1.8} />
           )}
         </button>
       </div>
 
       {/* The note itself: plain text, blinking caret at the end */}
-      <div className="mx-auto min-h-0 w-full max-w-[760px] flex-1 overflow-y-auto">
-        <p className="whitespace-pre-wrap break-words text-[24px] font-medium leading-10">
-          {text}
-          <span
-            aria-hidden
-            className="ml-0.5 inline-block h-[1.15em] w-[2px] translate-y-[0.2em] bg-current"
-            style={{ animation: "wa-caret-blink 1.1s step-end infinite" }}
-          />
-        </p>
-      </div>
+      {entries.length ? (
+        <div
+          ref={listRef}
+          className="mx-auto min-h-0 w-full max-w-[900px] flex-1 overflow-hidden"
+        >
+          <ul className="flex flex-col gap-7 pb-6">
+            {entries.map((entry, index) => {
+              const isLast = index === entries.length - 1;
+              return (
+                <li
+                  key={index}
+                  className={`flex gap-4 break-words ${
+                    isLast
+                      ? "text-[48px] font-bold leading-tight"
+                      : "text-[36px] font-medium leading-tight opacity-70"
+                  }`}
+                >
+                  <span className="shrink-0 opacity-40">▢</span>
+                  <span>{entry}</span>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      ) : (
+        <div className="mx-auto min-h-0 w-full max-w-[900px] flex-1 overflow-y-auto">
+          <p className="whitespace-pre-wrap break-words text-[46px] font-semibold leading-[1.45]">
+            {text}
+            <span
+              aria-hidden
+              className="ml-0.5 inline-block h-[1.15em] w-[2px] translate-y-[0.2em] bg-current"
+              style={{ animation: "wa-caret-blink 1.1s step-end infinite" }}
+            />
+          </p>
+        </div>
+      )}
     </div>
   );
 }

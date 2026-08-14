@@ -24,6 +24,10 @@ const DOODLE_URL = `url("data:image/svg+xml,${encodeURIComponent(DOODLE_SVG)}")`
 /** How long the typing bubble shows right before a message lands. */
 const PRE_MESSAGE_TYPING_MS = 1000;
 
+/** Owner's own messages are typed into the input before being sent. */
+const SELF_TYPE_MS_PER_CHAR = 55;
+const SELF_SEND_PAUSE_MS = 500;
+
 /** Notification tone for incoming messages. */
 const TONE_SRC = "/whatsapp.mp3";
 
@@ -44,6 +48,11 @@ export type ChatPanelProps = {
   senderColors?: Record<string, string>;
   /** Start playing as soon as the panel mounts (editor "Play" button). */
   autoStart?: boolean;
+  /**
+   * Whose phone this is. Messages from "me" or this name render outgoing
+   * (right side), and their typing appears in the input box as a draft.
+   */
+  selfName?: string;
   onMessage?: (message: VisibleMessage) => void;
   /** Called once when the script has played to the end. */
   onFinished?: () => void;
@@ -61,11 +70,14 @@ export default function ChatPanel({
   script,
   senderColors = {},
   autoStart = false,
+  selfName,
   onMessage,
   onFinished,
 }: ChatPanelProps) {
   const [visibleMessages, setVisibleMessages] = useState<VisibleMessage[]>([]);
   const [currentlyTyping, setCurrentlyTyping] = useState<string | null>(null);
+  /** What the phone's owner currently has typed in the input box. */
+  const [draft, setDraft] = useState("");
   /** null = not started; a number identifies the current playback run. */
   const [runId, setRunId] = useState<number | null>(autoStart ? 1 : null);
   const [finished, setFinished] = useState(false);
@@ -101,16 +113,65 @@ export default function ChatPanel({
         timer = setTimeout(resolve, ms);
       });
 
+    const isSelf = (sender: string) =>
+      sender === "me" || (!!selfName && sender === selfName);
+
+    /** Types text into the input box one character at a time. */
+    const typeDraft = async (text: string, perCharacter: number) => {
+      let typed = "";
+      for (const character of text) {
+        await wait(perCharacter);
+        if (cancelled) return false;
+        typed += character;
+        setDraft(typed);
+      }
+      return true;
+    };
+
+    /** Erases whatever is in the input box, one character at a time. */
+    const eraseDraft = async (text: string, perCharacter: number) => {
+      let typed = text;
+      while (typed.length) {
+        await wait(perCharacter);
+        if (cancelled) return false;
+        typed = typed.slice(0, -1);
+        setDraft(typed);
+      }
+      return true;
+    };
+
     const play = async () => {
       // Every run starts from a clean slate at event index 0.
       setVisibleMessages([]);
       setCurrentlyTyping(null);
+      setDraft("");
       setFinished(false);
 
       for (const event of script) {
         if (cancelled) return;
 
         if (event.type === "typing") {
+          // The phone's owner types into the input box, not a bubble.
+          if (isSelf(event.sender)) {
+            const text = event.draft ?? "";
+            if (!text) {
+              await wait(event.duration);
+              continue;
+            }
+            // 55% typing, 20% hesitating, 25% erasing.
+            if (!(await typeDraft(text, (event.duration * 0.55) / text.length)))
+              return;
+            await wait(event.duration * 0.2);
+            if (cancelled) return;
+            if (!event.keepDraft) {
+              if (
+                !(await eraseDraft(text, (event.duration * 0.25) / text.length))
+              )
+                return;
+            }
+            continue;
+          }
+
           // Bait: show the indicator, then clear it without a message landing.
           setCurrentlyTyping(event.sender);
           await wait(event.duration);
@@ -123,7 +184,16 @@ export default function ChatPanel({
           await wait(event.delay);
           if (cancelled) return;
 
-          if (event.sender !== "me") {
+          if (isSelf(event.sender)) {
+            // Type it out in the input box, pause, then "send" it.
+            if (event.text) {
+              if (!(await typeDraft(event.text, SELF_TYPE_MS_PER_CHAR)))
+                return;
+              await wait(SELF_SEND_PAUSE_MS);
+              if (cancelled) return;
+            }
+            setDraft("");
+          } else {
             setCurrentlyTyping(event.sender);
             await wait(PRE_MESSAGE_TYPING_MS);
             if (cancelled) return;
@@ -135,13 +205,13 @@ export default function ChatPanel({
             sender: event.sender,
             text: event.text,
             image: event.image,
-            timestamp: nowTime(),
+            timestamp: event.time ?? nowTime(),
             // Computed once, at insert time, and never recomputed.
             isFirstInGroup: true,
             isDeleted: false,
           };
 
-          if (event.sender !== "me") playTone();
+          if (!isSelf(event.sender)) playTone();
 
           setVisibleMessages((previous) => {
             const last = previous[previous.length - 1];
@@ -178,13 +248,16 @@ export default function ChatPanel({
       cancelled = true;
       if (timer) clearTimeout(timer);
     };
-  }, [script, runId]);
+  }, [script, runId, selfName]);
 
   /* ----------------------------- auto-scroll ----------------------------- */
   useEffect(() => {
     const body = bodyRef.current;
     if (body) body.scrollTop = body.scrollHeight;
   }, [visibleMessages, currentlyTyping]);
+
+  const isSelfSender = (sender: string) =>
+    sender === "me" || (!!selfName && sender === selfName);
 
   const started = runId !== null;
 
@@ -202,16 +275,16 @@ export default function ChatPanel({
   return (
     <section className="flex h-full min-w-0 flex-1 flex-col">
       {/* Header */}
-      <header className="flex h-[59px] shrink-0 items-center gap-4 border-l border-[#d1d7db] bg-[#f0f2f5] px-4">
+      <header className="flex h-[100px] shrink-0 items-center gap-5 border-l border-[#d1d7db] bg-[#f0f2f5] px-6">
         <Avatar
           name={chat?.name ?? ""}
           color={chat?.avatarColor ?? "#7f9c93"}
-          size={40}
+          size={70}
         />
         <div className="min-w-0 flex-1">
-          <div className="truncate text-[18px] font-semibold">{chat?.name}</div>
+          <div className="truncate text-[36px] font-bold">{chat?.name}</div>
           {currentlyTyping ? (
-            <div className="truncate text-[14px] text-[#00a884]">typing…</div>
+            <div className="truncate text-[24px] font-semibold text-[#00a884]">typing…</div>
           ) : null}
         </div>
         <div className="flex items-center gap-1">
@@ -267,13 +340,17 @@ export default function ChatPanel({
           {visibleMessages.map((message) => (
             <MessageBubble
               key={message.id}
-              sender={message.sender}
+              sender={isSelfSender(message.sender) ? "me" : message.sender}
               text={message.text}
               image={message.image}
               timestamp={message.timestamp}
               isDeleted={message.isDeleted}
               isFirstInGroup={message.isFirstInGroup}
-              senderName={chat?.isGroup ? message.sender : undefined}
+              senderName={
+                chat?.isGroup && !isSelfSender(message.sender)
+                  ? message.sender
+                  : undefined
+              }
               senderColor={resolveSenderColor(message.sender, senderColors)}
               status="read"
             />
@@ -297,17 +374,32 @@ export default function ChatPanel({
         <IconButton label="Emoji">
           <EmojiIcon />
         </IconButton>
-        <div className="flex h-11 flex-1 items-center rounded-full bg-white px-4">
-          <input
-            type="text"
-            placeholder="Type a message"
-            className="h-full w-full bg-transparent text-[15px] outline-none placeholder:text-[#8696a0]"
-          />
+        <div className="flex min-h-20 flex-1 items-center rounded-full bg-white px-7 py-4">
+          {draft ? (
+            <span className="whitespace-pre-wrap break-words text-[36px] font-semibold leading-[48px] text-[#111b21]">
+              {draft}
+              <span
+                aria-hidden
+                className="ml-[3px] inline-block h-[38px] w-[4px] translate-y-[7px] bg-[#00a884]"
+                style={{ animation: "wa-caret-blink 1.1s step-end infinite" }}
+              />
+            </span>
+          ) : (
+            <span className="text-[36px] text-[#8696a0]">Type a message</span>
+          )}
         </div>
-        <IconButton label="Voice message">
-          <MicIcon />
+        <IconButton label={draft ? "Send" : "Voice message"}>
+          {draft ? <SendIcon /> : <MicIcon />}
         </IconButton>
       </div>
     </section>
+  );
+}
+
+function SendIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className="text-[#00a884]">
+      <path d="M2.5 20.5l19-8.5-19-8.5v6.6l13 1.9-13 1.9z" />
+    </svg>
   );
 }

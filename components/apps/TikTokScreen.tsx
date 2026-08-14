@@ -1,7 +1,18 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Heart, MessageCircle, Share2 } from "lucide-react";
+import {
+  Bookmark,
+  Heart,
+  House,
+  MessageCircle,
+  Music2,
+  Plus,
+  Search,
+  Share2,
+  User,
+  Users,
+} from "lucide-react";
 import type { TikTokEvent } from "@/types/scene";
 
 export type TikTokScreenProps = {
@@ -130,59 +141,129 @@ export default function TikTokScreen({
     };
   }, [events, autoStart]);
 
+  const saves = Math.round(likes * 0.5);
+  const shares = Math.round(likes * 0.05);
+
   return (
-    <div className="relative h-full w-full overflow-hidden bg-[#0b0b0f] text-white">
+    <div className="relative h-full w-full overflow-hidden bg-black text-white">
       {/* Video placeholder */}
-      <div className="absolute inset-0 bg-[radial-gradient(130%_90%_at_30%_15%,#232c3b_0%,#12141c_55%,#0b0b0f_100%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(120%_80%_at_45%_35%,#3a3230_0%,#1a1614_50%,#0a0908_100%)]" />
+
+      {/* Top tabs */}
+      <div className="absolute inset-x-0 top-0 z-20 flex items-center justify-center gap-6 px-5 pt-3">
+        <span className="text-[24px] font-semibold text-white/70">STEM</span>
+        <span className="text-[24px] font-semibold text-white/70">
+          Community
+        </span>
+        <span className="text-[24px] font-semibold text-white/70">
+          Following
+        </span>
+        <span className="flex flex-col items-center">
+          <span className="text-[24px] font-bold text-white">For You</span>
+          <span className="mt-1 h-[3px] w-7 rounded-full bg-white" />
+        </span>
+        <Search className="absolute right-5 h-9 w-9" strokeWidth={2.2} />
+      </div>
 
       {/* Right action rail */}
-      <div className="absolute bottom-36 right-5 z-10 flex flex-col items-center gap-7">
+      <div className="absolute bottom-32 right-5 z-20 flex flex-col items-center gap-7">
+        {/* Profile avatar with follow badge */}
+        <div className="relative mb-2">
+          <span className="flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-[#b39ddb] to-[#7e57c2] ring-2 ring-white">
+            <User className="h-8 w-8" fill="white" strokeWidth={0} />
+          </span>
+          <span className="absolute -bottom-2.5 left-1/2 flex h-7 w-7 -translate-x-1/2 items-center justify-center rounded-full bg-[#fe2c55]">
+            <Plus className="h-4.5 w-4.5" strokeWidth={3} />
+          </span>
+        </div>
+
         <RailAction
           icon={
             <Heart
-              className="h-8 w-8"
-              fill={likes > 0 ? "#fe2c55" : "none"}
-              stroke={likes > 0 ? "#fe2c55" : "currentColor"}
-              strokeWidth={1.8}
+              className="h-14 w-14"
+              fill={likes > 0 ? "#fe2c55" : "white"}
+              stroke={likes > 0 ? "#fe2c55" : "white"}
+              strokeWidth={0}
             />
           }
           label={formatCount(likes)}
         />
         <RailAction
-          icon={<MessageCircle className="h-8 w-8" strokeWidth={1.8} />}
+          icon={
+            <MessageCircle className="h-14 w-14" fill="white" strokeWidth={0} />
+          }
           label={formatCount(comments.length)}
         />
         <RailAction
-          icon={<Share2 className="h-8 w-8" strokeWidth={1.8} />}
-          label="Share"
+          icon={<Bookmark className="h-14 w-14" fill="white" strokeWidth={0} />}
+          label={formatCount(saves)}
         />
+        <RailAction
+          icon={<Share2 className="h-14 w-14" fill="white" strokeWidth={0} />}
+          label={formatCount(shares)}
+        />
+
+        {/* Spinning album art */}
+        <span className="mt-2 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-[#5d4037] to-[#212121] ring-[3px] ring-[#2a2a2a]">
+          <Music2 className="h-6 w-6" fill="white" strokeWidth={0} />
+        </span>
       </div>
 
-      {/* Comments + caption, bottom-left */}
-      <div className="absolute bottom-8 left-6 right-24 z-10 flex flex-col gap-3">
-        <div className="flex max-h-44 flex-col justify-end gap-1.5 overflow-hidden">
-          {comments.map((comment, index) => (
-            <div
-              key={index}
-              className="w-fit max-w-full rounded-2xl bg-black/45 px-3.5 py-2 text-[16px] font-medium leading-snug"
-              style={{ animation: "wa-slide-up 0.3s ease-out" }}
-            >
-              <span className="font-semibold">@{comment.author}</span>{" "}
-              <span className="text-white/90">{comment.text}</span>
-            </div>
-          ))}
-        </div>
+      {/* Comments overlay */}
+      <div className="absolute bottom-48 left-5 right-32 z-20 flex max-h-[42%] flex-col justify-end gap-2.5 overflow-hidden">
+        {comments.map((comment, index) => (
+          <div
+            key={index}
+            className="w-fit max-w-full rounded-2xl bg-black/50 px-5 py-3 text-[30px] font-semibold leading-snug backdrop-blur-sm"
+            style={{ animation: "wa-slide-up 0.3s ease-out" }}
+          >
+            <span className="font-semibold text-white/70">
+              @{comment.author}
+            </span>{" "}
+            <span className="text-white">{comment.text}</span>
+          </div>
+        ))}
+      </div>
 
-        <div className="text-[18px] font-bold">@{username}</div>
+      {/* Username + caption, bottom-left */}
+      <div className="absolute bottom-[104px] left-5 right-32 z-20 flex flex-col gap-2">
+        <div className="text-[32px] font-bold">{username}</div>
         {caption ? (
           <div
             key={caption}
-            className="text-[17px] font-semibold leading-snug text-white/95"
+            className="text-[30px] font-semibold leading-snug text-white/95"
             style={{ animation: "wa-slide-up 0.3s ease-out" }}
           >
             {caption}
           </div>
         ) : null}
+        <div className="mt-1 flex items-center gap-3 text-[24px] font-medium">
+          <Music2 className="h-6 w-6 shrink-0" fill="white" strokeWidth={0} />
+          <span className="truncate">Contains: original sound — {username}</span>
+        </div>
+      </div>
+
+      {/* Bottom nav bar */}
+      <div className="absolute inset-x-0 bottom-0 z-20 flex items-center justify-around border-t border-white/10 bg-black px-2 pb-2 pt-1.5">
+        <NavItem icon={<House className="h-8 w-8" strokeWidth={2} />} label="Home" active />
+        <NavItem
+          icon={<Users className="h-8 w-8" strokeWidth={2} />}
+          label="Friends"
+          badge={4}
+        />
+        <span className="relative flex h-11 w-16 items-center justify-center">
+          <span className="absolute inset-0 -translate-x-1 rounded-lg bg-[#25f4ee]" />
+          <span className="absolute inset-0 translate-x-1 rounded-lg bg-[#fe2c55]" />
+          <span className="relative flex h-full w-full items-center justify-center rounded-lg bg-white">
+            <Plus className="h-7 w-7 text-black" strokeWidth={3} />
+          </span>
+        </span>
+        <NavItem
+          icon={<MessageCircle className="h-8 w-8" strokeWidth={2} />}
+          label="Inbox"
+          badge={3}
+        />
+        <NavItem icon={<User className="h-8 w-8" strokeWidth={2} />} label="Profile" />
       </div>
     </div>
   );
@@ -196,9 +277,37 @@ function RailAction({
   label: string;
 }) {
   return (
-    <div className="flex flex-col items-center gap-1 drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]">
+    <div className="flex flex-col items-center gap-1 drop-shadow-[0_1px_3px_rgba(0,0,0,0.7)]">
       {icon}
-      <span className="text-[14px] font-bold">{label}</span>
+      <span className="text-[28px] font-bold">{label}</span>
+    </div>
+  );
+}
+
+function NavItem({
+  icon,
+  label,
+  badge,
+  active = false,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  badge?: number;
+  active?: boolean;
+}) {
+  return (
+    <div
+      className={`relative flex flex-col items-center gap-0.5 ${
+        active ? "text-white" : "text-white/60"
+      }`}
+    >
+      {icon}
+      {badge ? (
+        <span className="absolute -top-1 left-1/2 ml-2 flex h-6 min-w-6 items-center justify-center rounded-full bg-[#fe2c55] px-1.5 text-[14px] font-bold text-white">
+          {badge}
+        </span>
+      ) : null}
+      <span className="text-[16px] font-medium">{label}</span>
     </div>
   );
 }

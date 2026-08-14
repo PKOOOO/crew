@@ -8,6 +8,8 @@ import { buildSenderColors } from "@/lib/sender-colors";
 export type WhatsAppScreenProps = {
   events: ChatEvent[];
   chatName: string;
+  /** Whose phone this is — their messages render outgoing. */
+  selfName?: string;
   autoStart?: boolean;
   /** Called once when the script has played to the end. */
   onFinished?: () => void;
@@ -21,6 +23,7 @@ export type WhatsAppScreenProps = {
 export default function WhatsAppScreen({
   events,
   chatName,
+  selfName = "Maya",
   autoStart = false,
   onFinished,
 }: WhatsAppScreenProps) {
@@ -30,10 +33,13 @@ export default function WhatsAppScreen({
     [events],
   );
 
-  // Two or more distinct non-"me" senders means a group chat.
+  // Two or more distinct senders other than the phone's owner = group chat.
   const isGroup = useMemo(
-    () => new Set(senders.filter((sender) => sender !== "me")).size > 1,
-    [senders],
+    () =>
+      new Set(
+        senders.filter((sender) => sender !== "me" && sender !== selfName),
+      ).size > 1,
+    [senders, selfName],
   );
 
   const chat = useMemo<ChatListItem>(
@@ -57,6 +63,7 @@ export default function WhatsAppScreen({
         script={events}
         senderColors={senderColors}
         autoStart={autoStart}
+        selfName={selfName}
         onFinished={onFinished}
       />
     </div>

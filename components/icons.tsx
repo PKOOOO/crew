@@ -48,9 +48,9 @@ export function IconButton({
     <button
       type="button"
       aria-label={label}
-      className="flex h-10 w-10 items-center justify-center rounded-full text-[#54656f] hover:bg-black/5"
+      className="flex h-14 w-14 items-center justify-center rounded-full text-[#54656f] hover:bg-black/5"
     >
-      <span className="[&>svg]:h-6 [&>svg]:w-6">{children}</span>
+      <span className="[&>svg]:h-8 [&>svg]:w-8">{children}</span>
     </button>
   );
 }

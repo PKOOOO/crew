@@ -6,6 +6,8 @@ import WhatsAppScreen from "@/components/apps/WhatsAppScreen";
 import TikTokScreen from "@/components/apps/TikTokScreen";
 import NotesScreen from "@/components/apps/NotesScreen";
 import LockscreenScreen from "@/components/apps/LockscreenScreen";
+import GroupInfoScreen from "@/components/apps/GroupInfoScreen";
+import ChatListScreen from "@/components/apps/ChatListScreen";
 
 export type PhoneFrameProps = {
   scene: Scene;
@@ -41,7 +43,10 @@ export default function PhoneFrame({
 }: PhoneFrameProps) {
   // Dark apps get a translucent overlay status bar with white text.
   const darkStatusBar =
-    scene.appType === "tiktok" || scene.appType === "lockscreen";
+    scene.appType === "tiktok" ||
+    scene.appType === "lockscreen" ||
+    scene.appType === "groupinfo" ||
+    scene.appType === "chatlist";
 
   return (
     <div
@@ -87,6 +92,27 @@ function Screen({
         <WhatsAppScreen
           events={scene.events}
           chatName={scene.chatName ?? scene.label}
+          selfName={scene.selfName}
+          autoStart={autoStart}
+          onFinished={onFinished}
+        />
+      );
+    case "chatlist":
+      return (
+        <ChatListScreen
+          events={scene.events}
+          unreadTotal={scene.unreadTotal}
+          groupTotal={scene.groupTotal}
+          autoStart={autoStart}
+          onFinished={onFinished}
+        />
+      );
+    case "groupinfo":
+      return (
+        <GroupInfoScreen
+          events={scene.events}
+          groupName={scene.groupName}
+          memberCount={scene.memberCount}
           autoStart={autoStart}
           onFinished={onFinished}
         />
