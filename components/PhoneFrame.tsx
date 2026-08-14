@@ -25,7 +25,16 @@ export type PhoneFrameProps = {
    * stretch the tablet across the screen.
    */
   sizeClass?: string;
+  /**
+   * Old-TV power transition for the screen itself: "closing" squeezes it to
+   * a bright line then a dot, "opening" reverses it.
+   */
+  screenPhase?: "idle" | "closing" | "opening" | "off";
 };
+
+/** Keep in sync with the crt-close / crt-open keyframes in globals.css. */
+export const CRT_CLOSE_MS = 460;
+export const CRT_OPEN_MS = 560;
 
 /**
  * Desktop/projection: iPad-style landscape tablet with bezels and a camera
@@ -40,6 +49,7 @@ export default function PhoneFrame({
   batteryPercent = 82,
   signalBars = 4,
   sizeClass = "h-[100dvh] w-screen md:h-[min(94vh,1250px)] md:w-auto md:aspect-[4/3]",
+  screenPhase = "idle",
 }: PhoneFrameProps) {
   // Dark apps get a translucent overlay status bar with white text.
   const darkStatusBar =
@@ -52,10 +62,41 @@ export default function PhoneFrame({
     <div
       className={`relative ${sizeClass} shrink-0 rounded-none bg-black p-0 shadow-none md:rounded-[42px] md:p-[16px] md:shadow-[0_24px_60px_rgba(0,0,0,0.45)]`}
     >
+      {/* Glow line that rides along with the pinch */}
+      {screenPhase === "closing" || screenPhase === "opening" ? (
+        <span
+          aria-hidden
+          className="pointer-events-none absolute left-1/2 top-1/2 z-40 h-[3px] w-[calc(100%-32px)] -translate-x-1/2 -translate-y-1/2 rounded-full bg-white shadow-[0_0_24px_10px_rgba(255,255,255,0.65)]"
+          style={{
+            animation: `${
+              screenPhase === "closing" ? "crt-line-close" : "crt-line-open"
+            } ${
+              screenPhase === "closing" ? CRT_CLOSE_MS : CRT_OPEN_MS
+            }ms ease-out forwards`,
+          }}
+        />
+      ) : null}
+
       {/* Front camera, centered in the top bezel */}
       <div className="absolute left-1/2 top-[6px] z-30 hidden h-1.5 w-1.5 -translate-x-1/2 rounded-full bg-[#1f2a33] ring-1 ring-[#3a4a57] md:block" />
 
-      <div className="relative flex h-full w-full flex-col overflow-hidden rounded-none bg-white md:rounded-[26px]">
+      {/* The screen. It powers down and up like a CRT between scenes. */}
+      <div
+        className="relative flex h-full w-full flex-col overflow-hidden rounded-none bg-white will-change-transform md:rounded-[26px]"
+        style={
+          screenPhase === "closing"
+            ? {
+                animation: `crt-close ${CRT_CLOSE_MS}ms cubic-bezier(0.6,0,0.8,1) forwards`,
+              }
+            : screenPhase === "opening"
+              ? {
+                  animation: `crt-open ${CRT_OPEN_MS}ms cubic-bezier(0.2,0.8,0.3,1) forwards`,
+                }
+              : screenPhase === "off"
+                ? { transform: "scaleY(0.014) scaleX(0)", opacity: 0 }
+                : undefined
+        }
+      >
         <StatusBar
           dark={darkStatusBar}
           overlay={darkStatusBar}

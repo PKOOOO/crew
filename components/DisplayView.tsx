@@ -3,7 +3,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { scenesSample } from "@/lib/scenes-sample";
 import type { Scene } from "@/types/scene";
-import PhoneFrame from "@/components/PhoneFrame";
+import PhoneFrame, {
+  CRT_CLOSE_MS,
+  CRT_OPEN_MS,
+} from "@/components/PhoneFrame";
 import { useSceneChannel, type SyncMessage } from "@/lib/scene-sync";
 
 /** Idle lockscreen shown before the show begins: just the clock, no events. */
@@ -24,6 +27,11 @@ export default function DisplayView() {
   const [activeSceneIndex, setActiveSceneIndex] = useState(0);
   const [playNonce, setPlayNonce] = useState(0);
   const [finished, setFinished] = useState(false);
+  /** CRT power transition between scenes. */
+  const [screenPhase, setScreenPhase] = useState<
+    "idle" | "closing" | "opening" | "off"
+  >("idle");
+  const phaseTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
 
   const startedRef = useRef(started);
   const indexRef = useRef(activeSceneIndex);
@@ -34,19 +42,43 @@ export default function DisplayView() {
 
   const sendRef = useRef<((message: SyncMessage) => void) | null>(null);
 
+  const clearPhaseTimers = () => {
+    for (const timer of phaseTimers.current) clearTimeout(timer);
+    phaseTimers.current = [];
+  };
+
+  /**
+   * Curtain out on the scene showing now, swap, curtain back in. The scene
+   * only changes once the screen has powered down, so the audience never
+   * sees a hard cut.
+   */
   const goTo = useCallback((index: number) => {
     const clamped = Math.max(0, Math.min(scenesSample.length, index));
-    setActiveSceneIndex(clamped);
-    setPlayNonce((nonce) => nonce + 1);
+    clearPhaseTimers();
     setFinished(false);
-    setStarted(true);
-    sendRef.current?.({
-      kind: "state",
-      sceneIndex: clamped,
-      started: true,
-      finished: false,
-    });
+    setScreenPhase("closing");
+
+    phaseTimers.current.push(
+      setTimeout(() => {
+        setActiveSceneIndex(clamped);
+        setPlayNonce((nonce) => nonce + 1);
+        setStarted(true);
+        setScreenPhase("opening");
+        sendRef.current?.({
+          kind: "state",
+          sceneIndex: clamped,
+          started: true,
+          finished: false,
+        });
+      }, CRT_CLOSE_MS),
+    );
+
+    phaseTimers.current.push(
+      setTimeout(() => setScreenPhase("idle"), CRT_CLOSE_MS + CRT_OPEN_MS),
+    );
   }, []);
+
+  useEffect(() => clearPhaseTimers, []);
 
   const handleMessage = useCallback(
     (message: SyncMessage) => {
@@ -105,10 +137,15 @@ export default function DisplayView() {
 
   /** The one required tap: unlocks audio playback on this machine. */
   const begin = () => {
+    clearPhaseTimers();
     setStarted(true);
     setActiveSceneIndex(0);
     setPlayNonce((nonce) => nonce + 1);
     setFinished(false);
+    setScreenPhase("opening");
+    phaseTimers.current.push(
+      setTimeout(() => setScreenPhase("idle"), CRT_OPEN_MS),
+    );
   };
 
   return (
@@ -119,6 +156,7 @@ export default function DisplayView() {
         autoStart={started && !done}
         onSceneFinished={handleSceneFinished}
         sizeClass="h-[100dvh] w-screen md:h-[94vh] md:w-[96vw]"
+        screenPhase={done ? "off" : screenPhase}
       />
 
       {/* Pre-show cover. Tapping it also unlocks audio for the whole show. */}
