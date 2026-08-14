@@ -26,15 +26,15 @@ export type PhoneFrameProps = {
    */
   sizeClass?: string;
   /**
-   * Old-TV power transition for the screen itself: "closing" squeezes it to
-   * a bright line then a dot, "opening" reverses it.
+   * Curtain over the screen: two panels sweeping in from the left and right
+   * ("closing"), sweeping back out ("opening"), or held shut ("off").
    */
   screenPhase?: "idle" | "closing" | "opening" | "off";
 };
 
-/** Keep in sync with the crt-close / crt-open keyframes in globals.css. */
-export const CRT_CLOSE_MS = 460;
-export const CRT_OPEN_MS = 560;
+/** Keep in sync with the curtain keyframes in globals.css. */
+export const CRT_CLOSE_MS = 1400;
+export const CRT_OPEN_MS = 1600;
 
 /**
  * Desktop/projection: iPad-style landscape tablet with bezels and a camera
@@ -62,41 +62,12 @@ export default function PhoneFrame({
     <div
       className={`relative ${sizeClass} shrink-0 rounded-none bg-black p-0 shadow-none md:rounded-[42px] md:p-[16px] md:shadow-[0_24px_60px_rgba(0,0,0,0.45)]`}
     >
-      {/* Glow line that rides along with the pinch */}
-      {screenPhase === "closing" || screenPhase === "opening" ? (
-        <span
-          aria-hidden
-          className="pointer-events-none absolute left-1/2 top-1/2 z-40 h-[3px] w-[calc(100%-32px)] -translate-x-1/2 -translate-y-1/2 rounded-full bg-white shadow-[0_0_24px_10px_rgba(255,255,255,0.65)]"
-          style={{
-            animation: `${
-              screenPhase === "closing" ? "crt-line-close" : "crt-line-open"
-            } ${
-              screenPhase === "closing" ? CRT_CLOSE_MS : CRT_OPEN_MS
-            }ms ease-out forwards`,
-          }}
-        />
-      ) : null}
-
       {/* Front camera, centered in the top bezel */}
       <div className="absolute left-1/2 top-[6px] z-30 hidden h-1.5 w-1.5 -translate-x-1/2 rounded-full bg-[#1f2a33] ring-1 ring-[#3a4a57] md:block" />
 
-      {/* The screen. It powers down and up like a CRT between scenes. */}
-      <div
-        className="relative flex h-full w-full flex-col overflow-hidden rounded-none bg-white will-change-transform md:rounded-[26px]"
-        style={
-          screenPhase === "closing"
-            ? {
-                animation: `crt-close ${CRT_CLOSE_MS}ms cubic-bezier(0.6,0,0.8,1) forwards`,
-              }
-            : screenPhase === "opening"
-              ? {
-                  animation: `crt-open ${CRT_OPEN_MS}ms cubic-bezier(0.2,0.8,0.3,1) forwards`,
-                }
-              : screenPhase === "off"
-                ? { transform: "scaleY(0.014) scaleX(0)", opacity: 0 }
-                : undefined
-        }
-      >
+      <div className="relative flex h-full w-full flex-col overflow-hidden rounded-none bg-white md:rounded-[26px]">
+        <Curtain phase={screenPhase} />
+
         <StatusBar
           dark={darkStatusBar}
           overlay={darkStatusBar}
@@ -112,6 +83,70 @@ export default function PhoneFrame({
             onFinished={onSceneFinished}
           />
         </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Two black panels that sweep in from the left and right edges to meet in
+ * the middle, then sweep back out. Sits above the app, below nothing.
+ */
+function Curtain({
+  phase,
+}: {
+  phase: "idle" | "closing" | "opening" | "off";
+}) {
+  if (phase === "idle") return null;
+
+  const held = phase === "off";
+  const closing = phase === "closing";
+  const duration = closing ? CRT_CLOSE_MS : CRT_OPEN_MS;
+  const easing = closing
+    ? "cubic-bezier(0.4, 0, 0.2, 1)"
+    : "cubic-bezier(0.3, 0, 0.2, 1)";
+
+  const panel = (side: "left" | "right") => {
+    if (held) return { transform: "translateX(0)" };
+    const name = closing
+      ? `curtain-close-${side}`
+      : `curtain-open-${side}`;
+    return { animation: `${name} ${duration}ms ${easing} forwards` };
+  };
+
+  return (
+    <div
+      aria-hidden
+      className="pointer-events-none absolute inset-0 z-40 overflow-hidden"
+    >
+      {/* Left panel */}
+      <div
+        className="absolute inset-y-0 left-0 w-1/2 bg-black will-change-transform"
+        style={panel("left")}
+      >
+        <span
+          className="absolute inset-y-0 right-0 w-[3px] bg-white/80 shadow-[0_0_28px_10px_rgba(255,255,255,0.35)]"
+          style={
+            held
+              ? { opacity: 0 }
+              : { animation: `curtain-edge ${duration}ms ease-out forwards` }
+          }
+        />
+      </div>
+
+      {/* Right panel */}
+      <div
+        className="absolute inset-y-0 right-0 w-1/2 bg-black will-change-transform"
+        style={panel("right")}
+      >
+        <span
+          className="absolute inset-y-0 left-0 w-[3px] bg-white/80 shadow-[0_0_28px_10px_rgba(255,255,255,0.35)]"
+          style={
+            held
+              ? { opacity: 0 }
+              : { animation: `curtain-edge ${duration}ms ease-out forwards` }
+          }
+        />
       </div>
     </div>
   );

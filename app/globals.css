@@ -12,82 +12,54 @@
   --font-mono: var(--font-geist-mono);
 }
 
-/* Old-TV power-off: squeeze to a bright horizontal line, then to a dot. */
-@keyframes crt-close {
-  0% {
-    transform: scaleY(1) scaleX(1);
-    filter: brightness(1) contrast(1);
-    opacity: 1;
+/* Curtain: two panels sweep in from the left and right to meet in the middle. */
+@keyframes curtain-close-left {
+  from {
+    transform: translateX(-100%);
   }
-  50% {
-    transform: scaleY(0.014) scaleX(1);
-    filter: brightness(2.4) contrast(1.3);
-    opacity: 1;
-  }
-  62% {
-    transform: scaleY(0.014) scaleX(1);
-    filter: brightness(3.2) contrast(1.4);
-    opacity: 1;
-  }
-  100% {
-    transform: scaleY(0.014) scaleX(0);
-    filter: brightness(4) contrast(1.5);
-    opacity: 0.9;
+  to {
+    transform: translateX(0);
   }
 }
 
-/* …and the reverse, as the next scene comes up. */
-@keyframes crt-open {
-  0% {
-    transform: scaleY(0.014) scaleX(0);
-    filter: brightness(4) contrast(1.5);
-    opacity: 0.9;
+@keyframes curtain-close-right {
+  from {
+    transform: translateX(100%);
   }
-  45% {
-    transform: scaleY(0.014) scaleX(1);
-    filter: brightness(3) contrast(1.4);
-    opacity: 1;
-  }
-  100% {
-    transform: scaleY(1) scaleX(1);
-    filter: brightness(1) contrast(1);
-    opacity: 1;
+  to {
+    transform: translateX(0);
   }
 }
 
-/* The white glow line that rides along with the pinch. */
-@keyframes crt-line-close {
-  0%,
-  35% {
-    opacity: 0;
-    transform: scaleX(1);
+@keyframes curtain-open-left {
+  from {
+    transform: translateX(0);
   }
-  55% {
-    opacity: 1;
-    transform: scaleX(1);
-  }
-  100% {
-    opacity: 0;
-    transform: scaleX(0);
+  to {
+    transform: translateX(-100%);
   }
 }
 
-@keyframes crt-line-open {
+@keyframes curtain-open-right {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+
+/* Soft glow on the leading edge of each panel. */
+@keyframes curtain-edge {
   0% {
     opacity: 0;
-    transform: scaleX(0);
   }
-  35% {
+  25%,
+  75% {
     opacity: 1;
-    transform: scaleX(1);
-  }
-  70% {
-    opacity: 0.8;
-    transform: scaleX(1);
   }
   100% {
     opacity: 0;
-    transform: scaleX(1);
   }
 }
 

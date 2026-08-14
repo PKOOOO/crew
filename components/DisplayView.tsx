@@ -32,13 +32,15 @@ export default function DisplayView() {
     "idle" | "closing" | "opening" | "off"
   >("idle");
   const phaseTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const phaseRef = useRef(screenPhase);
 
   const startedRef = useRef(started);
   const indexRef = useRef(activeSceneIndex);
   useEffect(() => {
     startedRef.current = started;
     indexRef.current = activeSceneIndex;
-  }, [started, activeSceneIndex]);
+    phaseRef.current = screenPhase;
+  }, [started, activeSceneIndex, screenPhase]);
 
   const sendRef = useRef<((message: SyncMessage) => void) | null>(null);
 
@@ -56,7 +58,12 @@ export default function DisplayView() {
     const clamped = Math.max(0, Math.min(scenesSample.length, index));
     clearPhaseTimers();
     setFinished(false);
-    setScreenPhase("closing");
+
+    // If the curtain is already shut (the scene played out), go straight to
+    // opening on the new scene instead of closing an already-closed curtain.
+    const alreadyClosed = phaseRef.current === "off";
+    const closeDelay = alreadyClosed ? 0 : CRT_CLOSE_MS;
+    if (!alreadyClosed) setScreenPhase("closing");
 
     phaseTimers.current.push(
       setTimeout(() => {
@@ -70,11 +77,11 @@ export default function DisplayView() {
           started: true,
           finished: false,
         });
-      }, CRT_CLOSE_MS),
+      }, closeDelay),
     );
 
     phaseTimers.current.push(
-      setTimeout(() => setScreenPhase("idle"), CRT_CLOSE_MS + CRT_OPEN_MS),
+      setTimeout(() => setScreenPhase("idle"), closeDelay + CRT_OPEN_MS),
     );
   }, []);
 
@@ -125,8 +132,16 @@ export default function DisplayView() {
       coverScene)
     : coverScene;
 
+  /**
+   * A scene has played its last event: draw the curtain closed and leave it
+   * shut until the operator cues the next scene.
+   */
   const handleSceneFinished = useCallback(() => {
     setFinished(true);
+    setScreenPhase("closing");
+    phaseTimers.current.push(
+      setTimeout(() => setScreenPhase("off"), CRT_CLOSE_MS),
+    );
     sendRef.current?.({
       kind: "state",
       sceneIndex: indexRef.current,
