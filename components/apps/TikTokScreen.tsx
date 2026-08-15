@@ -8,7 +8,6 @@ import {
   MessageCircle,
   Music2,
   Plus,
-  Search,
   Share2,
   User,
   Users,
@@ -28,6 +27,12 @@ const CAPTION_SWAP_DWELL_MS = 1600;
 
 /** Gap between like-sound pops while the counter is climbing. */
 const LIKE_POP_INTERVAL_MS = 320;
+
+/**
+ * Comments kept on screen. Older ones drop off whole rather than being
+ * sliced in half by the overflow edge.
+ */
+const MAX_VISIBLE_COMMENTS = 4;
 
 type Comment = { author: string; text: string };
 
@@ -143,14 +148,15 @@ export default function TikTokScreen({
 
   const saves = Math.round(likes * 0.5);
   const shares = Math.round(likes * 0.05);
+  const visibleComments = comments.slice(-MAX_VISIBLE_COMMENTS);
 
   return (
     <div className="relative h-full w-full overflow-hidden bg-black text-white">
       {/* Video placeholder */}
       <div className="absolute inset-0 bg-[radial-gradient(120%_80%_at_45%_35%,#3a3230_0%,#1a1614_50%,#0a0908_100%)]" />
 
-      {/* Top tabs */}
-      <div className="absolute inset-x-0 top-0 z-20 flex items-center justify-center gap-6 px-5 pt-3">
+      {/* Top tabs — pushed clear of the phone's overlay status bar */}
+      <div className="absolute inset-x-0 top-0 z-20 flex items-center justify-center gap-6 px-5 pt-11 md:pt-14">
         <span className="text-[24px] font-semibold text-white/70">STEM</span>
         <span className="text-[24px] font-semibold text-white/70">
           Community
@@ -162,7 +168,6 @@ export default function TikTokScreen({
           <span className="text-[24px] font-bold text-white">For You</span>
           <span className="mt-1 h-[3px] w-7 rounded-full bg-white" />
         </span>
-        <Search className="absolute right-5 h-9 w-9" strokeWidth={2.2} />
       </div>
 
       {/* Right action rail */}
@@ -209,37 +214,44 @@ export default function TikTokScreen({
         </span>
       </div>
 
-      {/* Comments overlay */}
-      <div className="absolute bottom-48 left-5 right-32 z-20 flex max-h-[42%] flex-col justify-end gap-2.5 overflow-hidden">
-        {comments.map((comment, index) => (
-          <div
-            key={index}
-            className="w-fit max-w-full rounded-2xl bg-black/50 px-5 py-3 text-[30px] font-semibold leading-snug backdrop-blur-sm"
-            style={{ animation: "wa-slide-up 0.3s ease-out" }}
-          >
-            <span className="font-semibold text-white/70">
-              @{comment.author}
-            </span>{" "}
-            <span className="text-white">{comment.text}</span>
-          </div>
-        ))}
-      </div>
+      {/* Bottom-left column: comments stack above the caption block. One
+          flex column so a long caption pushes the comments up instead of
+          overlapping them. */}
+      <div className="absolute bottom-[96px] left-5 right-32 top-[20%] z-20 flex flex-col justify-end gap-3">
+        {/* Comments */}
+        <div className="flex min-h-0 flex-1 flex-col justify-end gap-2.5 overflow-hidden">
+          {visibleComments.map((comment, index) => (
+            <div
+              key={`${comment.author}-${index}`}
+              className="w-fit max-w-full rounded-2xl bg-black/50 px-5 py-3 text-[30px] font-semibold leading-snug backdrop-blur-sm"
+              style={{ animation: "wa-slide-up 0.3s ease-out" }}
+            >
+              <span className="font-semibold text-white/70">
+                @{comment.author}
+              </span>{" "}
+              <span className="text-white">{comment.text}</span>
+            </div>
+          ))}
+        </div>
 
-      {/* Username + caption, bottom-left */}
-      <div className="absolute bottom-[104px] left-5 right-32 z-20 flex flex-col gap-2">
-        <div className="text-[32px] font-bold">{username}</div>
-        {caption ? (
-          <div
-            key={caption}
-            className="text-[30px] font-semibold leading-snug text-white/95"
-            style={{ animation: "wa-slide-up 0.3s ease-out" }}
-          >
-            {caption}
+        {/* Username + caption */}
+        <div className="flex shrink-0 flex-col gap-2">
+          <div className="text-[32px] font-bold">{username}</div>
+          {caption ? (
+            <div
+              key={caption}
+              className="text-[30px] font-semibold leading-snug text-white/95"
+              style={{ animation: "wa-slide-up 0.3s ease-out" }}
+            >
+              {caption}
+            </div>
+          ) : null}
+          <div className="mt-1 flex items-center gap-3 text-[24px] font-medium">
+            <Music2 className="h-6 w-6 shrink-0" fill="white" strokeWidth={0} />
+            <span className="truncate">
+              Contains: original sound — {username}
+            </span>
           </div>
-        ) : null}
-        <div className="mt-1 flex items-center gap-3 text-[24px] font-medium">
-          <Music2 className="h-6 w-6 shrink-0" fill="white" strokeWidth={0} />
-          <span className="truncate">Contains: original sound — {username}</span>
         </div>
       </div>
 

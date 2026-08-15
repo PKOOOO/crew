@@ -58,7 +58,30 @@ export type GroupInfoEvent = {
   delay: number;
 };
 
+/** One row in the notes index — the "all notes" screen. */
+export type NoteListItem = {
+  /** Bold first line of the row. */
+  title: string;
+  /** Grey date under the title, e.g. "19/07/2026". */
+  date: string;
+  /** Grey text after the date — the note's first body line. */
+  preview?: string;
+  /** Section this note files under, e.g. "Previous 30 Days" or "June". */
+  group: string;
+};
+
 export type NotesEvent =
+  | {
+      /** Holds on the notes index (all notes) for duration. */
+      type: "list";
+      duration: number;
+    }
+  | {
+      /** Leaves the index and opens a single note. */
+      type: "open";
+      title?: string;
+      date?: string;
+    }
   | {
       /** Reveals text character-by-character at charDelayMs per character. */
       type: "type";
@@ -107,6 +130,13 @@ export type LockscreenEvent =
 type SceneBase = {
   id: string;
   label: string;
+  /**
+   * Clock the phone shows for this scene, 24-hour ("23:43"). Keeps the status
+   * bar honest against the timestamps inside the scene. Omitted = live clock.
+   */
+  statusTime?: string;
+  /** Date under the lockscreen clock, e.g. "Sunday 19 July". */
+  statusDate?: string;
 };
 
 /**
@@ -137,5 +167,15 @@ export type Scene =
       memberCount?: number;
     })
   | (SceneBase & { appType: "tiktok"; events: TikTokEvent[]; username?: string })
-  | (SceneBase & { appType: "notes"; events: NotesEvent[]; dark?: boolean })
+  | (SceneBase & {
+      appType: "notes";
+      events: NotesEvent[];
+      dark?: boolean;
+      /** Rows for the index screen; a "list" event needs these. */
+      notes?: NoteListItem[];
+      /** Yellow heading on the open note. */
+      noteTitle?: string;
+      /** Centered timestamp on the open note. */
+      noteDate?: string;
+    })
   | (SceneBase & { appType: "lockscreen"; events: LockscreenEvent[] });

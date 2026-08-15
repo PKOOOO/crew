@@ -21,6 +21,14 @@ const DOODLE_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="260" height="
 
 const DOODLE_URL = `url("data:image/svg+xml,${encodeURIComponent(DOODLE_SVG)}")`;
 
+/**
+ * Global pace for chat playback. Every wait in the engine — scripted delays,
+ * typing indicators, per-character typing — is multiplied by this, so the
+ * whole conversation slows down without editing any scene. 1 = as scripted,
+ * higher = slower.
+ */
+const PLAYBACK_PACE = 1.5;
+
 /** How long the typing bubble shows right before a message lands. */
 const PRE_MESSAGE_TYPING_MS = 1000;
 
@@ -110,7 +118,7 @@ export default function ChatPanel({
 
     const wait = (ms: number) =>
       new Promise<void>((resolve) => {
-        timer = setTimeout(resolve, ms);
+        timer = setTimeout(resolve, ms * PLAYBACK_PACE);
       });
 
     const isSelf = (sender: string) =>

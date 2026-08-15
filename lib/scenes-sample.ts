@@ -3,6 +3,7 @@ import type {
   ChatListEvent,
   GroupInfoEvent,
   LockscreenEvent,
+  NoteListItem,
   NotesEvent,
   Scene,
   TikTokEvent,
@@ -218,8 +219,37 @@ const scene4Tiktok: TikTokEvent[] = [
 ];
 
 /* 5 — A secret account. No profile picture. No followers. This is where
- * she writes. */
+ * she writes. The index opens first, then the one note nobody has read. */
+const mayaNotes: NoteListItem[] = [
+  {
+    group: "Previous 30 Days",
+    title: "private",
+    date: "19/07/2026",
+    preview: "—",
+  },
+  {
+    group: "Previous 30 Days",
+    title: "party list",
+    date: "16/07/2026",
+    preview: "snacks, speaker, ice",
+  },
+  {
+    group: "June",
+    title: "bio revision",
+    date: "07/06/2026",
+    preview: "photosynthesis",
+  },
+  {
+    group: "May",
+    title: "song ideas",
+    date: "16/05/2026",
+    preview: "chorus, bridge",
+  },
+];
+
 const scene5Notes: NotesEvent[] = [
+  { type: "list", duration: 3200 },
+  { type: "open", title: "private", date: "19 July 2026 at 23:31" },
   {
     type: "type",
     text: "Does anybody ever feel invisible in a room full of people?",
@@ -508,7 +538,7 @@ const scene13GroupInfo: GroupInfoEvent[] = [
 const scene14Notes: NotesEvent[] = [
   {
     type: "drafts",
-    duration: 9000,
+    duration: 24000,
     items: [
       "I keep smiling so nobody asks.",
       "Everyone thinks I'm the fun one.",
@@ -533,6 +563,7 @@ const scene14Notes: NotesEvent[] = [
 export const scenesSample: Scene[] = [
   {
     id: "scene-1",
+    statusTime: "13:05",
     appType: "tiktok",
     label: "1 · TikTok — BEST CLASS EVER (Maya posts only 😊)",
     username: "maya.k",
@@ -540,6 +571,7 @@ export const scenesSample: Scene[] = [
   },
   {
     id: "scene-2",
+    statusTime: "20:02",
     appType: "whatsapp",
     label: "2 · THE CREW — party Saturday + memes",
     chatName: "THE CREW 🔥",
@@ -547,12 +579,15 @@ export const scenesSample: Scene[] = [
   },
   {
     id: "scene-3",
+    statusTime: "23:43",
+    statusDate: "Sunday 19 July",
     appType: "lockscreen",
     label: "3 · Act One close — READ 11:43 PM",
     events: scene3Lockscreen,
   },
   {
     id: "scene-4",
+    statusTime: "21:15",
     appType: "tiktok",
     label: "4 · TikTok — 100… 300… 800 likes",
     username: "maya.k",
@@ -560,13 +595,18 @@ export const scenesSample: Scene[] = [
   },
   {
     id: "scene-5",
+    statusTime: "23:31",
     appType: "notes",
     label: "5 · Notes — the secret account",
     dark: true,
+    notes: mayaNotes,
+    noteTitle: "private",
+    noteDate: "19 July 2026 at 23:31",
     events: scene5Notes,
   },
   {
     id: "scene-6",
+    statusTime: "23:35",
     appType: "whatsapp",
     label: "6 · Maya types it, never sends",
     chatName: "THE CREW 🔥",
@@ -574,6 +614,7 @@ export const scenesSample: Scene[] = [
   },
   {
     id: "scene-7",
+    statusTime: "13:12",
     appType: "whatsapp",
     label: "7 · THE CREW — You're famous MAYA!",
     chatName: "THE CREW 🔥",
@@ -581,6 +622,7 @@ export const scenesSample: Scene[] = [
   },
   {
     id: "scene-8",
+    statusTime: "23:31",
     appType: "whatsapp",
     label: "8 · The pivotal night chat (11:31 → 11:43 PM)",
     chatName: "THE CREW 🔥",
@@ -588,18 +630,22 @@ export const scenesSample: Scene[] = [
   },
   {
     id: "scene-9",
+    statusTime: "23:41",
     appType: "chatlist",
     label: "9 · Mwangi, Dad, Mom — delivered, never opened",
     events: scene9ChatList,
   },
   {
     id: "scene-10",
+    statusTime: "23:43",
+    statusDate: "Sunday 19 July",
     appType: "lockscreen",
     label: "10 · One final vibrate — READ 11:43 PM",
     events: scene10Lockscreen,
   },
   {
     id: "scene-11",
+    statusTime: "16:20",
     appType: "tiktok",
     label: "11 · Aftermath — RIP Maya 💔",
     username: "school.memories",
@@ -607,6 +653,7 @@ export const scenesSample: Scene[] = [
   },
   {
     id: "scene-12",
+    statusTime: "23:44",
     appType: "whatsapp",
     label: "12 · The chat sits in dead silence",
     chatName: "THE CREW 🔥",
@@ -614,6 +661,7 @@ export const scenesSample: Scene[] = [
   },
   {
     id: "scene-13",
+    statusTime: "09:12",
     appType: "groupinfo",
     label: "13 · Last seen yesterday at 11:43 PM",
     groupName: "THE CREW 🔥",
@@ -621,9 +669,13 @@ export const scenesSample: Scene[] = [
   },
   {
     id: "scene-14",
+    statusTime: "23:43",
     appType: "notes",
     label: "14 · Notes — the unsent drafts",
     dark: true,
+    notes: mayaNotes,
+    noteTitle: "drafts",
+    noteDate: "19 July 2026 at 23:43",
     events: scene14Notes,
   },
 ];

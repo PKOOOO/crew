@@ -26,11 +26,16 @@ export default function ControlPage() {
     null,
   );
   const [sceneFinished, setSceneFinished] = useState(false);
+  /** The projector's curtain — closed only when the operator says so. */
+  const [curtainClosed, setCurtainClosed] = useState(false);
 
   const handleMessage = useCallback((message: SyncMessage) => {
     if (message.kind !== "state") return;
     setDisplaySceneIndex(message.sceneIndex);
     setSceneFinished(message.finished);
+    if (message.curtainClosed !== undefined) {
+      setCurtainClosed(message.curtainClosed);
+    }
   }, []);
 
   const { send, status } = useSceneChannel(handleMessage);
@@ -46,16 +51,29 @@ export default function ControlPage() {
     return () => clearTimeout(timer);
   }, [status]);
 
+  const buzz = () => {
+    if (typeof navigator !== "undefined" && navigator.vibrate) {
+      navigator.vibrate(12);
+    }
+  };
+
   const cue = (index: number, action: "play" | "next" | "prev" | "replay") => {
     const clamped = Math.max(0, Math.min(scenesSample.length - 1, index));
     setActiveSceneIndex(clamped);
     setSceneFinished(false);
+    // Cueing a scene always leaves the curtain open on the new one.
+    setCurtainClosed(false);
     const next = nonce + 1;
     setNonce(next);
     send({ kind: "cue", sceneIndex: clamped, nonce: next, action });
-    if (typeof navigator !== "undefined" && navigator.vibrate) {
-      navigator.vibrate(12);
-    }
+    buzz();
+  };
+
+  const toggleCurtain = () => {
+    const closed = !curtainClosed;
+    setCurtainClosed(closed);
+    send({ kind: "curtain", closed });
+    buzz();
   };
 
   const scene = scenesSample[activeSceneIndex];
@@ -140,6 +158,23 @@ export default function ControlPage() {
         <p className="mb-2 truncate text-center text-[13px] text-white/50">
           {scene ? `${activeSceneIndex + 1}. ${scene.label}` : ""}
         </p>
+
+        {/* The curtain is manual: a scene that has played out stays on screen
+            until this closes it. Pulses once the scene has run out of events. */}
+        <button
+          type="button"
+          onClick={toggleCurtain}
+          className={`mb-2.5 h-14 w-full rounded-2xl border text-[16px] font-semibold active:bg-white/10 ${
+            curtainClosed
+              ? "border-[#f5a623]/60 bg-[#f5a623]/15 text-[#f5a623]"
+              : `border-white/20 text-white ${
+                  sceneFinished ? "animate-pulse" : ""
+                }`
+          }`}
+        >
+          {curtainClosed ? "▶ Open curtain" : "■ Close curtain"}
+        </button>
+
         <div className="flex items-center gap-2.5">
           <button
             type="button"

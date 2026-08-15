@@ -6,6 +6,10 @@ import type { LockscreenEvent } from "@/types/scene";
 
 export type LockscreenScreenProps = {
   events: LockscreenEvent[];
+  /** The scene's clock, 24-hour ("23:43"). Omitted = live clock. */
+  time?: string;
+  /** The scene's date line, e.g. "Sunday 19 July". Omitted = today. */
+  date?: string;
   autoStart?: boolean;
   /** Called once when all events have played. */
   onFinished?: () => void;
@@ -28,6 +32,8 @@ const STATUS_LABEL: Record<NonNullable<Banner["status"]>, string> = {
 
 export default function LockscreenScreen({
   events,
+  time: fixedTime,
+  date: fixedDate,
   autoStart = false,
   onFinished,
 }: LockscreenScreenProps) {
@@ -107,15 +113,19 @@ export default function LockscreenScreen({
     };
   }, [events, autoStart]);
 
-  const time = now.toLocaleTimeString("en-GB", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-  const date = now.toLocaleDateString("en-GB", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-  });
+  const time =
+    fixedTime ??
+    now.toLocaleTimeString("en-GB", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  const date =
+    fixedDate ??
+    now.toLocaleDateString("en-GB", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+    });
 
   return (
     <div className="relative h-full w-full overflow-hidden text-white">

@@ -36,10 +36,14 @@ export default function DisplayView() {
 
   const startedRef = useRef(started);
   const indexRef = useRef(activeSceneIndex);
+  /** Shut, or on its way shut — what the operator's toggle acts against. */
+  const curtainClosedRef = useRef(false);
   useEffect(() => {
     startedRef.current = started;
     indexRef.current = activeSceneIndex;
     phaseRef.current = screenPhase;
+    curtainClosedRef.current =
+      screenPhase === "off" || screenPhase === "closing";
   }, [started, activeSceneIndex, screenPhase]);
 
   const sendRef = useRef<((message: SyncMessage) => void) | null>(null);
@@ -76,6 +80,7 @@ export default function DisplayView() {
           sceneIndex: clamped,
           started: true,
           finished: false,
+          curtainClosed: false,
         });
       }, closeDelay),
     );
@@ -83,6 +88,37 @@ export default function DisplayView() {
     phaseTimers.current.push(
       setTimeout(() => setScreenPhase("idle"), closeDelay + CRT_OPEN_MS),
     );
+  }, []);
+
+  /**
+   * The operator's curtain, closed or opened by hand. Nothing else touches
+   * it — a scene that has played out keeps its last frame on screen.
+   */
+  const setCurtain = useCallback((closed: boolean) => {
+    if (curtainClosedRef.current === closed) return;
+    clearPhaseTimers();
+
+    if (closed) {
+      setScreenPhase("closing");
+      curtainClosedRef.current = true;
+      phaseTimers.current.push(
+        setTimeout(() => setScreenPhase("off"), CRT_CLOSE_MS),
+      );
+    } else {
+      setScreenPhase("opening");
+      curtainClosedRef.current = false;
+      phaseTimers.current.push(
+        setTimeout(() => setScreenPhase("idle"), CRT_OPEN_MS),
+      );
+    }
+
+    sendRef.current?.({
+      kind: "state",
+      sceneIndex: indexRef.current,
+      started: startedRef.current,
+      finished: false,
+      curtainClosed: closed,
+    });
   }, []);
 
   useEffect(() => clearPhaseTimers, []);
@@ -93,16 +129,21 @@ export default function DisplayView() {
         goTo(message.sceneIndex);
         return;
       }
+      if (message.kind === "curtain") {
+        setCurtain(message.closed);
+        return;
+      }
       if (message.kind === "request") {
         sendRef.current?.({
           kind: "state",
           sceneIndex: indexRef.current,
           started: startedRef.current,
           finished: false,
+          curtainClosed: curtainClosedRef.current,
         });
       }
     },
-    [goTo],
+    [goTo, setCurtain],
   );
 
   const { send } = useSceneChannel(handleMessage);
@@ -120,11 +161,13 @@ export default function DisplayView() {
         goTo(indexRef.current - 1);
       } else if (event.key.toLowerCase() === "r") {
         goTo(indexRef.current);
+      } else if (event.key.toLowerCase() === "c") {
+        setCurtain(!curtainClosedRef.current);
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [goTo]);
+  }, [goTo, setCurtain]);
 
   const done = started && activeSceneIndex >= scenesSample.length;
   const scene = started
@@ -133,20 +176,17 @@ export default function DisplayView() {
     : coverScene;
 
   /**
-   * A scene has played its last event: draw the curtain closed and leave it
-   * shut until the operator cues the next scene.
+   * A scene has played its last event. The curtain stays open and the final
+   * frame just sits there — closing it is the operator's call, from /control.
    */
   const handleSceneFinished = useCallback(() => {
     setFinished(true);
-    setScreenPhase("closing");
-    phaseTimers.current.push(
-      setTimeout(() => setScreenPhase("off"), CRT_CLOSE_MS),
-    );
     sendRef.current?.({
       kind: "state",
       sceneIndex: indexRef.current,
       started: true,
       finished: true,
+      curtainClosed: curtainClosedRef.current,
     });
   }, []);
 

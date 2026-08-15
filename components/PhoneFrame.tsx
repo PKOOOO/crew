@@ -15,7 +15,10 @@ export type PhoneFrameProps = {
   autoStart?: boolean;
   /** Called once when the scene's events have played to the end. */
   onSceneFinished?: () => void;
-  /** Status bar overrides — defaults to a live clock and a full-ish battery. */
+  /**
+   * Status bar overrides. Falls back to the scene's own statusTime, then to a
+   * live clock; the battery defaults to full-ish.
+   */
   statusTime?: string;
   batteryPercent?: number;
   signalBars?: 1 | 2 | 3 | 4;
@@ -51,12 +54,16 @@ export default function PhoneFrame({
   sizeClass = "h-[100dvh] w-screen md:h-[min(94vh,1250px)] md:w-auto md:aspect-[4/3]",
   screenPhase = "idle",
 }: PhoneFrameProps) {
-  // Dark apps get a translucent overlay status bar with white text.
-  const darkStatusBar =
+  // Full-bleed apps get a translucent overlay status bar with white text.
+  const overlayStatusBar =
     scene.appType === "tiktok" ||
     scene.appType === "lockscreen" ||
     scene.appType === "groupinfo" ||
     scene.appType === "chatlist";
+
+  // Notes on a black background keeps its own bar, just tinted to match.
+  const darkStatusBar =
+    overlayStatusBar || (scene.appType === "notes" && scene.dark === true);
 
   return (
     <div
@@ -70,8 +77,8 @@ export default function PhoneFrame({
 
         <StatusBar
           dark={darkStatusBar}
-          overlay={darkStatusBar}
-          time={statusTime}
+          overlay={overlayStatusBar}
+          time={statusTime ?? scene.statusTime}
           batteryPercent={batteryPercent}
           signalBars={signalBars}
         />
@@ -207,6 +214,9 @@ function Screen({
         <NotesScreen
           events={scene.events}
           dark={scene.dark}
+          notes={scene.notes}
+          noteTitle={scene.noteTitle}
+          noteDate={scene.noteDate}
           autoStart={autoStart}
           onFinished={onFinished}
         />
@@ -215,6 +225,8 @@ function Screen({
       return (
         <LockscreenScreen
           events={scene.events}
+          time={scene.statusTime}
+          date={scene.statusDate}
           autoStart={autoStart}
           onFinished={onFinished}
         />
@@ -252,7 +264,13 @@ function StatusBar({
     <div
       className={`z-20 flex h-9 shrink-0 items-center justify-between px-5 text-[13px] font-semibold md:h-11 md:px-8 md:text-[15px] ${
         dark ? "text-white" : "text-black"
-      } ${overlay ? "absolute inset-x-0 top-0 bg-transparent" : "bg-[#f0f2f5]"}`}
+      } ${
+        overlay
+          ? "absolute inset-x-0 top-0 bg-transparent"
+          : dark
+            ? "bg-black"
+            : "bg-[#f0f2f5]"
+      }`}
     >
       <span suppressHydrationWarning>{shownTime}</span>
       <span className="flex items-center gap-1.5">

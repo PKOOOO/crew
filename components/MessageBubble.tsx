@@ -83,15 +83,23 @@ export default function MessageBubble({
                 className="h-auto w-[420px] rounded-md object-cover"
               />
               {text ? (
-                <span className="mt-2 block whitespace-pre-wrap break-words text-[44px] font-bold leading-[58px] text-[#111b21]">
-                  {text}
+                <div className="relative mt-2">
+                  <span className="block whitespace-pre-wrap break-words text-[44px] font-bold leading-[58px] text-[#111b21]">
+                    {text}
+                    <Meta
+                      timestamp={timestamp}
+                      outgoing={outgoing}
+                      status={status}
+                      variant="reserve"
+                    />
+                  </span>
                   <Meta
                     timestamp={timestamp}
                     outgoing={outgoing}
                     status={status}
-                    inline
+                    variant="pinned"
                   />
-                </span>
+                </div>
               ) : (
                 <span className="absolute bottom-3 right-3 flex items-center rounded bg-black/45 px-2.5 py-1 text-[24px] font-semibold leading-[28px] text-white [&_svg]:text-white">
                   {timestamp}
@@ -107,7 +115,7 @@ export default function MessageBubble({
                 timestamp={timestamp}
                 outgoing={outgoing}
                 status={status}
-                inline={false}
+                variant="trailing"
               />
             </span>
           ) : emojiOnly ? (
@@ -117,19 +125,27 @@ export default function MessageBubble({
                 timestamp={timestamp}
                 outgoing={outgoing}
                 status={status}
-                inline={false}
+                variant="trailing"
               />
             </span>
           ) : (
-            <span className="whitespace-pre-wrap break-words text-[44px] font-bold leading-[58px] text-[#111b21]">
-              {text}
+            <div className="relative">
+              <span className="block whitespace-pre-wrap break-words text-[44px] font-bold leading-[58px] text-[#111b21]">
+                {text}
+                <Meta
+                  timestamp={timestamp}
+                  outgoing={outgoing}
+                  status={status}
+                  variant="reserve"
+                />
+              </span>
               <Meta
                 timestamp={timestamp}
                 outgoing={outgoing}
                 status={status}
-                inline
+                variant="pinned"
               />
-            </span>
+            </div>
           )}
         </div>
       </div>
@@ -138,25 +154,36 @@ export default function MessageBubble({
 }
 
 /**
- * Timestamp + ticks. Trails the last words of the message as an inline-block so
- * the text wraps around it, exactly like WhatsApp.
+ * Timestamp + ticks.
+ *
+ * "pinned" sits in the bottom-right corner of the message body; "reserve" is an
+ * invisible copy riding at the end of the text so the last line keeps room for
+ * it and the two never collide — the trick WhatsApp itself uses. A float can't
+ * do this: floats add no height to their parent, so one that didn't fit on the
+ * last line spilled out under the bubble. "trailing" just follows the text, for
+ * bodies that aren't plain wrapped paragraphs.
  */
 function Meta({
   timestamp,
   outgoing,
   status,
-  inline,
+  variant,
 }: {
   timestamp: string;
   outgoing: boolean;
   status: MessageStatus;
-  inline: boolean;
+  variant: "pinned" | "reserve" | "trailing";
 }) {
+  const placement = {
+    pinned: "absolute bottom-0 right-0",
+    reserve: "invisible ml-4 inline-block h-[28px] align-bottom",
+    trailing: "ml-4 inline-block h-[28px] translate-y-[6px] align-bottom",
+  }[variant];
+
   return (
     <span
-      className={`ml-4 inline-block h-[28px] translate-y-[6px] select-none whitespace-nowrap align-bottom text-[24px] font-semibold leading-[28px] text-[#667781] ${
-        inline ? "float-right" : ""
-      }`}
+      aria-hidden={variant === "reserve"}
+      className={`select-none whitespace-nowrap text-[24px] font-semibold leading-[28px] text-[#667781] ${placement}`}
     >
       {timestamp}
       {outgoing ? <Ticks status={status} /> : null}

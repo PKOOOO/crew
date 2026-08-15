@@ -25,6 +25,12 @@ export type CueMessage = {
   action: "play" | "next" | "prev" | "replay";
 };
 
+/**
+ * Control → display: draw the curtain shut, or sweep it back open. The
+ * curtain is never automatic — the operator closes every scene by hand.
+ */
+export type CurtainMessage = { kind: "curtain"; closed: boolean };
+
 /** Display → control: what the projector is currently showing. */
 export type StateMessage = {
   kind: "state";
@@ -32,19 +38,30 @@ export type StateMessage = {
   started: boolean;
   /** The scene's events have finished playing — safe to advance. */
   finished: boolean;
+  /** The curtain is shut (or on its way shut). */
+  curtainClosed?: boolean;
 };
 
 /** Either side asking the other to re-announce itself. */
 export type RequestMessage = { kind: "request" };
 
-export type SyncMessage = CueMessage | StateMessage | RequestMessage;
+export type SyncMessage =
+  | CueMessage
+  | CurtainMessage
+  | StateMessage
+  | RequestMessage;
 
 export type SyncStatus = "connecting" | "online" | "local-only" | "error";
 
 function isSyncMessage(value: unknown): value is SyncMessage {
   if (typeof value !== "object" || value === null) return false;
   const kind = (value as { kind?: unknown }).kind;
-  return kind === "cue" || kind === "state" || kind === "request";
+  return (
+    kind === "cue" ||
+    kind === "curtain" ||
+    kind === "state" ||
+    kind === "request"
+  );
 }
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
