@@ -10,7 +10,7 @@ import type {
 
 /*
  * Scene order follows the printed script, convo1 → convo11:
- *   1  social media moment (BEST CLASS EVER)      convo1
+ *   1  THE CREW — BEST CLASS EVER                  convo1
  *   2  THE CREW — party planning + memes          convo2
  *   3  Act One close — "READ 11:43 PM"            convo3
  *   4  the funny TikTok — likes flood in          convo4
@@ -25,21 +25,58 @@ import type {
  *   13 the unsent drafts                          convo11
  */
 
-/* 1 — Social media moment. Everyone comments. Except Maya: she types,
- * deletes, types, deletes, and finally posts only 😊 */
-const scene1Tiktok: TikTokEvent[] = [
-  { type: "caption", text: "📸 BEST CLASS EVER!! ❤️❤️❤️❤️❤️" },
+/* 1 — The group lights up about the school day. Everyone has something to
+ * say. Except Maya: all she manages is 😊 */
+const scene1Whatsapp: ChatEvent[] = [
   {
-    type: "comment",
-    author: "jay_official",
+    type: "message",
+    id: "s1-1",
+    sender: "Tash",
+    text: "📸 BEST CLASS EVER!! ❤️❤️❤️❤️❤️",
+    time: "1:03 PM",
+    delay: 1400,
+  },
+  {
+    type: "message",
+    id: "s1-2",
+    sender: "Jay",
     text: "Best day everrr 😂",
+    time: "1:03 PM",
     delay: 1800,
   },
-  { type: "comment", author: "tash.k", text: "We ate 🔥🔥", delay: 1600 },
-  { type: "comment", author: "kevin_m", text: "Legends only", delay: 1600 },
-  { type: "comment", author: "aisha.w", text: "❤️❤️❤️❤️❤️", delay: 1500 },
-  { type: "likes", target: 320, duration: 4000 },
-  { type: "comment", author: "maya", text: "😊", delay: 4000 },
+  {
+    type: "message",
+    id: "s1-3",
+    sender: "Tash",
+    text: "We ate 🔥🔥",
+    time: "1:04 PM",
+    delay: 1600,
+  },
+  {
+    type: "message",
+    id: "s1-4",
+    sender: "Kevin",
+    text: "Legends only",
+    time: "1:04 PM",
+    delay: 1600,
+  },
+  {
+    type: "message",
+    id: "s1-5",
+    sender: "Aisha",
+    text: "❤️❤️❤️❤️❤️",
+    time: "1:05 PM",
+    delay: 1500,
+  },
+  // Everyone has something to say. Maya manages a smiley.
+  {
+    type: "message",
+    id: "s1-6",
+    sender: "Maya",
+    text: "😊",
+    time: "1:05 PM",
+    delay: 4000,
+  },
 ];
 
 /* 2 — GROUP CHAT PROJECTION: the party gets planned, then the memes. */
@@ -548,10 +585,10 @@ export const scenesSample: Scene[] = [
   {
     id: "scene-1",
     statusTime: "13:05",
-    appType: "tiktok",
-    label: "1 · TikTok — BEST CLASS EVER (Maya posts only 😊)",
-    username: "maya.k",
-    events: scene1Tiktok,
+    appType: "whatsapp",
+    label: "1 · THE CREW — BEST CLASS EVER (Maya sends only 😊)",
+    chatName: "THE CREW 🔥",
+    events: scene1Whatsapp,
   },
   {
     id: "scene-2",
