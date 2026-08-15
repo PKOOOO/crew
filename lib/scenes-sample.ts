@@ -34,7 +34,7 @@ const scene1Whatsapp: ChatEvent[] = [
     sender: "Tash",
     text: "📸 BEST CLASS EVER!! ❤️❤️❤️❤️❤️",
     time: "1:03 PM",
-    delay: 1400,
+    delay: 2400,
   },
   {
     type: "message",
@@ -42,7 +42,7 @@ const scene1Whatsapp: ChatEvent[] = [
     sender: "Jay",
     text: "Best day everrr 😂",
     time: "1:03 PM",
-    delay: 1800,
+    delay: 3200,
   },
   {
     type: "message",
@@ -50,7 +50,7 @@ const scene1Whatsapp: ChatEvent[] = [
     sender: "Tash",
     text: "We ate 🔥🔥",
     time: "1:04 PM",
-    delay: 1600,
+    delay: 2800,
   },
   {
     type: "message",
@@ -58,7 +58,7 @@ const scene1Whatsapp: ChatEvent[] = [
     sender: "Kevin",
     text: "Legends only",
     time: "1:04 PM",
-    delay: 1600,
+    delay: 2800,
   },
   {
     type: "message",
@@ -66,7 +66,7 @@ const scene1Whatsapp: ChatEvent[] = [
     sender: "Aisha",
     text: "❤️❤️❤️❤️❤️",
     time: "1:05 PM",
-    delay: 1500,
+    delay: 2600,
   },
   // Everyone has something to say. Maya manages a smiley.
   {
@@ -75,7 +75,7 @@ const scene1Whatsapp: ChatEvent[] = [
     sender: "Maya",
     text: "😊",
     time: "1:05 PM",
-    delay: 4000,
+    delay: 7000,
   },
 ];
 
