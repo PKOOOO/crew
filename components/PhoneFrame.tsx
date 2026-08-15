@@ -13,6 +13,11 @@ export type PhoneFrameProps = {
   scene: Scene;
   /** Start the scene's playback engine as soon as it mounts. */
   autoStart?: boolean;
+  /**
+   * Halt the scene where it stands — nothing advances, no sound plays. Used
+   * while the curtain is shut, so a covered scene isn't still running.
+   */
+  paused?: boolean;
   /** Called once when the scene's events have played to the end. */
   onSceneFinished?: () => void;
   /**
@@ -47,6 +52,7 @@ export const CRT_OPEN_MS = 1600;
 export default function PhoneFrame({
   scene,
   autoStart = false,
+  paused = false,
   onSceneFinished,
   statusTime,
   batteryPercent = 82,
@@ -87,6 +93,7 @@ export default function PhoneFrame({
           <Screen
             scene={scene}
             autoStart={autoStart}
+            paused={paused}
             onFinished={onSceneFinished}
           />
         </div>
@@ -163,12 +170,18 @@ function Curtain({
 function Screen({
   scene,
   autoStart,
+  paused,
   onFinished,
 }: {
   scene: Scene;
   autoStart: boolean;
+  paused: boolean;
   onFinished?: () => void;
 }) {
+  // Every engine halts when its autoStart goes false: the effect re-runs and
+  // its cleanup cancels the loop in flight, sounds included.
+  const playing = autoStart && !paused;
+
   switch (scene.appType) {
     case "whatsapp":
       return (
@@ -179,6 +192,8 @@ function Screen({
           instant={scene.instant}
           headerStatus={scene.headerStatus}
           autoStart={autoStart}
+          // The chat latches its run at mount, so it needs telling directly.
+          paused={paused}
           onFinished={onFinished}
         />
       );
@@ -188,7 +203,7 @@ function Screen({
           events={scene.events}
           unreadTotal={scene.unreadTotal}
           groupTotal={scene.groupTotal}
-          autoStart={autoStart}
+          autoStart={playing}
           onFinished={onFinished}
         />
       );
@@ -198,7 +213,7 @@ function Screen({
           events={scene.events}
           groupName={scene.groupName}
           memberCount={scene.memberCount}
-          autoStart={autoStart}
+          autoStart={playing}
           onFinished={onFinished}
         />
       );
@@ -207,7 +222,7 @@ function Screen({
         <TikTokScreen
           events={scene.events}
           username={scene.username}
-          autoStart={autoStart}
+          autoStart={playing}
           onFinished={onFinished}
         />
       );
@@ -219,7 +234,7 @@ function Screen({
           notes={scene.notes}
           noteTitle={scene.noteTitle}
           noteDate={scene.noteDate}
-          autoStart={autoStart}
+          autoStart={playing}
           onFinished={onFinished}
         />
       );
@@ -229,7 +244,7 @@ function Screen({
           events={scene.events}
           time={scene.statusTime}
           date={scene.statusDate}
-          autoStart={autoStart}
+          autoStart={playing}
           onFinished={onFinished}
         />
       );

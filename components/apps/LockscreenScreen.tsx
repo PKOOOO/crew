@@ -135,6 +135,8 @@ export default function LockscreenScreen({
     return () => {
       cancelled = true;
       if (timer) clearTimeout(timer);
+      // Stopping the scene stops its sound mid-buzz too.
+      soundRef.current?.pause();
     };
   }, [events, autoStart]);
 

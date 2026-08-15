@@ -14,6 +14,8 @@ export type WhatsAppScreenProps = {
   instant?: boolean;
   /** Line under the chat name, e.g. a member's last-seen. */
   headerStatus?: string;
+  /** Halt playback where it stands — the curtain is shut. */
+  paused?: boolean;
   autoStart?: boolean;
   /** Called once when the script has played to the end. */
   onFinished?: () => void;
@@ -30,6 +32,7 @@ export default function WhatsAppScreen({
   selfName = "Maya",
   instant = false,
   headerStatus,
+  paused = false,
   autoStart = false,
   onFinished,
 }: WhatsAppScreenProps) {
@@ -72,6 +75,7 @@ export default function WhatsAppScreen({
         selfName={selfName}
         instant={instant}
         headerStatus={headerStatus}
+        paused={paused}
         onFinished={onFinished}
       />
     </div>

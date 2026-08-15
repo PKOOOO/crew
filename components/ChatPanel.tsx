@@ -68,6 +68,11 @@ export type ChatPanelProps = {
   instant?: boolean;
   /** Line under the chat name in the header, e.g. a member's last-seen. */
   headerStatus?: string;
+  /**
+   * Halt playback where it stands. Unlike autoStart this is read continuously,
+   * so the curtain closing stops a chat that is already running.
+   */
+  paused?: boolean;
   onMessage?: (message: VisibleMessage) => void;
   /** Called once when the script has played to the end. */
   onFinished?: () => void;
@@ -119,6 +124,7 @@ export default function ChatPanel({
   selfName,
   instant = false,
   headerStatus,
+  paused = false,
   onMessage,
   onFinished,
 }: ChatPanelProps) {
@@ -155,6 +161,10 @@ export default function ChatPanel({
 
     // A flashback is already on screen — there is nothing to play out.
     if (instant) return;
+
+    // Stopped dead by the curtain. The cleanup below has already cancelled
+    // whatever was in flight when this flipped.
+    if (paused) return;
 
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -298,8 +308,10 @@ export default function ChatPanel({
     return () => {
       cancelled = true;
       if (timer) clearTimeout(timer);
+      // Stopping the chat stops its tone mid-ring too.
+      toneRef.current?.pause();
     };
-  }, [script, runId, selfName, instant]);
+  }, [script, runId, selfName, instant, paused]);
 
   /* ------------------------------ flashback ------------------------------ */
   // Derived, not played: the settled conversation is what a flashback renders.

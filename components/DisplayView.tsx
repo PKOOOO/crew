@@ -209,6 +209,9 @@ export default function DisplayView() {
         key={started ? `scene-${activeSceneIndex}:${playNonce}` : "cover"}
         scene={scene}
         autoStart={started && !done}
+        // A covered scene is a stopped scene: the moment the curtain starts
+        // to sweep in, playback and its sound halt where they are.
+        paused={screenPhase === "closing" || screenPhase === "off"}
         onSceneFinished={handleSceneFinished}
         sizeClass="h-[100dvh] w-screen md:h-[94vh] md:w-[96vw]"
         screenPhase={done ? "off" : screenPhase}
