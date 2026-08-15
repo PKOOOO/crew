@@ -176,6 +176,8 @@ function Screen({
           events={scene.events}
           chatName={scene.chatName ?? scene.label}
           selfName={scene.selfName}
+          instant={scene.instant}
+          headerStatus={scene.headerStatus}
           autoStart={autoStart}
           onFinished={onFinished}
         />

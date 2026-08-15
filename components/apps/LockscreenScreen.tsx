@@ -1,7 +1,18 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { MessageCircle, Phone } from "lucide-react";
+import Image from "next/image";
+import {
+  Camera,
+  CloudSun,
+  Flashlight,
+  Lock,
+  MessageCircle,
+  Moon,
+  Phone,
+  Sun,
+  X,
+} from "lucide-react";
 import type { LockscreenEvent } from "@/types/scene";
 
 export type LockscreenScreenProps = {
@@ -20,8 +31,21 @@ type Banner = {
   app: "call" | "message";
   from: string;
   preview: string;
+  icon?: string;
   status: "delivered" | "read" | "missed" | null;
   statusLabel?: string;
+};
+
+/** Conditions on the lockscreen widget — set dressing, not scene data. */
+const WEATHER = {
+  place: "Mvita",
+  temperature: "28°",
+  condition: "Partly Cloudy",
+  high: "29°",
+  low: "23°",
+  windDirection: "S",
+  windSpeed: "23",
+  uvIndex: "7",
 };
 
 const STATUS_LABEL: Record<NonNullable<Banner["status"]>, string> = {
@@ -85,6 +109,7 @@ export default function LockscreenScreen({
               app: event.app,
               from: event.from,
               preview: event.preview,
+              icon: event.icon,
               status: event.app === "call" ? "missed" : null,
             },
           ]);
@@ -127,71 +152,208 @@ export default function LockscreenScreen({
       month: "long",
     });
 
+  // A sun over a midnight scene reads wrong — the glyph follows the clock.
+  const hour = Number(time.slice(0, 2));
+  const nighttime = Number.isFinite(hour) && (hour >= 19 || hour < 6);
+
   return (
     <div className="relative h-full w-full overflow-hidden text-white">
-      {/* Dark blurred-wallpaper background */}
-      <div className="absolute inset-0 bg-[linear-gradient(160deg,#1d2951_0%,#101433_45%,#2b1548_100%)]" />
-      <div className="absolute -left-16 top-24 h-64 w-64 rounded-full bg-[#4a5fc1]/30 blur-3xl" />
-      <div className="absolute -right-12 bottom-24 h-72 w-72 rounded-full bg-[#7b3fa0]/25 blur-3xl" />
+      {/* Cloudy dusk wallpaper */}
+      <div className="absolute inset-0 bg-[linear-gradient(175deg,#3d6172_0%,#456d80_30%,#4a7387_55%,#3a5a69_100%)]" />
+      <div className="absolute -left-24 top-8 h-72 w-[38rem] rounded-full bg-white/12 blur-3xl" />
+      <div className="absolute left-1/3 -top-16 h-64 w-[30rem] rounded-full bg-white/10 blur-3xl" />
+      <div className="absolute -right-20 top-1/3 h-80 w-[34rem] rounded-full bg-white/8 blur-3xl" />
+      <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/25 to-transparent" />
 
-      <div className="relative flex h-full flex-col items-center px-3 pt-16">
-        {/* Clock */}
-        <div
-          suppressHydrationWarning
-          className="text-[96px] font-extralight leading-none tracking-tight"
-        >
-          {time}
-        </div>
-        <div suppressHydrationWarning className="mt-3 text-[19px] text-white/80">
-          {date}
-        </div>
+      {/* Landscape split: clock and widgets left, notifications right */}
+      <div className="relative flex h-full gap-12 px-16 pb-8 pt-14">
+        {/* ------------------------------ left ------------------------------ */}
+        <div className="flex min-w-0 flex-[1.1] flex-col items-center">
+          <Lock className="h-9 w-9 shrink-0" strokeWidth={2.6} />
 
-        {/* Notification banners */}
-        <div className="mt-12 flex w-full max-w-[560px] flex-col gap-2.5">
-          {banners.map((banner) => (
-            <div
-              key={banner.id}
-              className="flex items-start gap-3 rounded-3xl bg-white/15 p-3.5 shadow-[0_8px_24px_rgba(0,0,0,0.25)] backdrop-blur-xl"
-              style={{ animation: "wa-notif-in 0.35s ease-out" }}
-            >
-              <span
-                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] ${
-                  banner.app === "call" ? "bg-[#34c759]" : "bg-[#00a884]"
-                }`}
-              >
-                {banner.app === "call" ? (
-                  <Phone className="h-5 w-5" fill="white" strokeWidth={0} />
+          <div
+            suppressHydrationWarning
+            className="mt-4 flex shrink-0 items-center gap-3 text-[30px] font-semibold"
+          >
+            <span>{date}</span>
+            {nighttime ? (
+              <Moon className="h-8 w-8" fill="white" strokeWidth={0} />
+            ) : (
+              <CloudSun className="h-9 w-9" strokeWidth={2.2} />
+            )}
+            <span>{WEATHER.place}</span>
+          </div>
+
+          {/* Frosted-glass clock */}
+          <div
+            suppressHydrationWarning
+            className="bg-gradient-to-b from-white/70 to-white/25 bg-clip-text text-[210px] font-semibold leading-[0.95] tracking-tight text-transparent drop-shadow-[0_2px_12px_rgba(0,0,0,0.18)]"
+          >
+            {time}
+          </div>
+
+          <div className="flex-1" />
+
+          {/* Weather row */}
+          <div className="flex w-full shrink-0 items-center justify-center gap-10">
+            <div className="min-w-0">
+              <div className="flex items-center gap-3">
+                {nighttime ? (
+                  <Moon className="h-9 w-9 shrink-0" fill="white" strokeWidth={0} />
                 ) : (
-                  <MessageCircle
-                    className="h-5 w-5"
-                    fill="white"
-                    strokeWidth={0}
-                  />
+                  <CloudSun className="h-10 w-10 shrink-0" strokeWidth={2.2} />
                 )}
-              </span>
-
-              <div className="min-w-0 flex-1">
-                <div className="flex items-baseline justify-between gap-2">
-                  <span className="truncate text-[18px] font-bold">
-                    {banner.from}
-                  </span>
-                  <span className="shrink-0 text-[13px] text-white/60">
-                    now
-                  </span>
-                </div>
-                <div className="truncate text-[17px] font-medium text-white/95">
-                  {banner.preview}
-                </div>
-                {banner.status ? (
-                  <div className="mt-0.5 text-[14px] font-medium text-white/60">
-                    {banner.statusLabel ?? STATUS_LABEL[banner.status]}
-                  </div>
-                ) : null}
+                <span className="text-[38px] font-bold leading-none">
+                  {WEATHER.temperature}
+                </span>
+              </div>
+              <div className="mt-2 truncate text-[26px] font-semibold">
+                {WEATHER.condition}
+              </div>
+              <div className="text-[24px] font-medium text-white/70">
+                H:{WEATHER.high} L:{WEATHER.low}
               </div>
             </div>
-          ))}
+
+            <div className="flex h-28 w-28 shrink-0 flex-col items-center justify-center rounded-full bg-white/15 backdrop-blur-md">
+              <span className="text-[20px] font-semibold text-white/80">
+                {WEATHER.windDirection}
+              </span>
+              <span className="text-[30px] font-bold leading-tight">
+                {WEATHER.windSpeed}
+              </span>
+              <span className="text-[16px] font-semibold text-white/80">
+                KM/H
+              </span>
+            </div>
+
+            <UvGauge value={WEATHER.uvIndex} />
+          </div>
+        </div>
+
+        {/* ------------------------------ right ----------------------------- */}
+        <div className="flex min-w-0 flex-1 flex-col">
+          <div className="flex shrink-0 items-center justify-between gap-4">
+            <span className="text-[38px] font-bold">Notification Centre</span>
+            <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-white/20 backdrop-blur-md">
+              <X className="h-7 w-7" strokeWidth={2.8} />
+            </span>
+          </div>
+
+          <div className="mt-6 flex min-h-0 flex-1 flex-col gap-4 overflow-hidden">
+            {banners.map((banner) => (
+              <div
+                key={banner.id}
+                className="flex shrink-0 items-center gap-5 rounded-[32px] bg-white/15 px-6 py-5 shadow-[0_8px_24px_rgba(0,0,0,0.22)] ring-1 ring-white/15 backdrop-blur-xl"
+                style={{ animation: "wa-notif-in 0.35s ease-out" }}
+              >
+                <AppIcon app={banner.app} icon={banner.icon} />
+
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-baseline justify-between gap-3">
+                    <span className="truncate text-[30px] font-bold">
+                      {banner.from}
+                    </span>
+                    <span className="shrink-0 text-[22px] font-medium text-white/70">
+                      now
+                    </span>
+                  </div>
+                  <div className="truncate text-[27px] font-medium text-white/95">
+                    {banner.preview}
+                  </div>
+                  {banner.status ? (
+                    <div
+                      className={`mt-1 text-[23px] font-bold ${
+                        banner.status === "read"
+                          ? "text-white"
+                          : "text-white/65"
+                      }`}
+                    >
+                      {banner.statusLabel ?? STATUS_LABEL[banner.status]}
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
+
+      {/* Torch, camera, home indicator */}
+      <span className="absolute bottom-9 left-16 flex h-20 w-20 items-center justify-center rounded-full bg-black/25 backdrop-blur-md">
+        <Flashlight className="h-9 w-9" strokeWidth={2.2} />
+      </span>
+      <span className="absolute bottom-9 right-16 flex h-20 w-20 items-center justify-center rounded-full bg-black/25 backdrop-blur-md">
+        <Camera className="h-9 w-9" strokeWidth={2.2} />
+      </span>
+      <span className="absolute bottom-3 left-1/2 h-1.5 w-56 -translate-x-1/2 rounded-full bg-white/80" />
     </div>
+  );
+}
+
+/** The notification's app tile: the real icon when the scene supplies one. */
+function AppIcon({ app, icon }: { app: "call" | "message"; icon?: string }) {
+  if (icon) {
+    return (
+      <Image
+        src={icon}
+        alt=""
+        width={72}
+        height={72}
+        unoptimized
+        className="h-[72px] w-[72px] shrink-0 rounded-[18px] object-cover"
+      />
+    );
+  }
+
+  return (
+    <span
+      className={`flex h-[72px] w-[72px] shrink-0 items-center justify-center rounded-[18px] ${
+        app === "call" ? "bg-[#34c759]" : "bg-[#00a884]"
+      }`}
+    >
+      {app === "call" ? (
+        <Phone className="h-10 w-10" fill="white" strokeWidth={0} />
+      ) : (
+        <MessageCircle className="h-10 w-10" fill="white" strokeWidth={0} />
+      )}
+    </span>
+  );
+}
+
+/** UV index dial — an open ring with a bead at the current value. */
+function UvGauge({ value }: { value: string }) {
+  return (
+    <span className="relative flex h-28 w-28 shrink-0 items-center justify-center">
+      <svg viewBox="0 0 100 100" className="absolute inset-0 h-full w-full">
+        <circle
+          cx="50"
+          cy="50"
+          r="44"
+          fill="none"
+          stroke="rgba(255,255,255,0.25)"
+          strokeWidth="7"
+          strokeLinecap="round"
+          strokeDasharray="207 277"
+          transform="rotate(120 50 50)"
+        />
+        <circle
+          cx="50"
+          cy="50"
+          r="44"
+          fill="none"
+          stroke="rgba(255,255,255,0.85)"
+          strokeWidth="7"
+          strokeLinecap="round"
+          strokeDasharray="118 277"
+          transform="rotate(120 50 50)"
+        />
+        <circle cx="82" cy="27" r="6" fill="white" />
+      </svg>
+      <span className="relative flex flex-col items-center">
+        <span className="text-[32px] font-bold leading-none">{value}</span>
+        <Sun className="mt-1 h-5 w-5" strokeWidth={2.6} />
+      </span>
+    </span>
   );
 }

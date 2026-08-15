@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { ChatEvent, ChatListItem } from "@/types/chat";
 import MessageBubble from "@/components/MessageBubble";
 import TypingIndicator from "@/components/TypingIndicator";
@@ -61,6 +61,13 @@ export type ChatPanelProps = {
    * (right side), and their typing appears in the input box as a draft.
    */
   selfName?: string;
+  /**
+   * Flashback: render the entire conversation the moment the scene opens.
+   * Delays, typing indicators and tones are all skipped.
+   */
+  instant?: boolean;
+  /** Line under the chat name in the header, e.g. a member's last-seen. */
+  headerStatus?: string;
   onMessage?: (message: VisibleMessage) => void;
   /** Called once when the script has played to the end. */
   onFinished?: () => void;
@@ -73,12 +80,45 @@ function nowTime(): string {
   });
 }
 
+/**
+ * Folds a whole script down to the conversation it ends up as: every message
+ * landed, deletions applied, typing thrown away. What a flashback shows.
+ */
+function settleScript(script: ChatEvent[]): VisibleMessage[] {
+  const settled: VisibleMessage[] = [];
+
+  for (const event of script) {
+    if (event.type === "typing") continue;
+
+    if (event.type === "message") {
+      const last = settled[settled.length - 1];
+      settled.push({
+        id: event.id,
+        sender: event.sender,
+        text: event.text,
+        image: event.image,
+        timestamp: event.time ?? nowTime(),
+        isFirstInGroup: !last || last.sender !== event.sender,
+        isDeleted: false,
+      });
+      continue;
+    }
+
+    const target = settled.find((message) => message.id === event.targetId);
+    if (target) target.isDeleted = true;
+  }
+
+  return settled;
+}
+
 export default function ChatPanel({
   chat,
   script,
   senderColors = {},
   autoStart = false,
   selfName,
+  instant = false,
+  headerStatus,
   onMessage,
   onFinished,
 }: ChatPanelProps) {
@@ -112,6 +152,9 @@ export default function ChatPanel({
   useEffect(() => {
     // Playback is explicit: nothing runs until "Start chat" / "Replay".
     if (runId === null) return;
+
+    // A flashback is already on screen — there is nothing to play out.
+    if (instant) return;
 
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -256,13 +299,28 @@ export default function ChatPanel({
       cancelled = true;
       if (timer) clearTimeout(timer);
     };
-  }, [script, runId, selfName]);
+  }, [script, runId, selfName, instant]);
+
+  /* ------------------------------ flashback ------------------------------ */
+  // Derived, not played: the settled conversation is what a flashback renders.
+  const flashback = useMemo(
+    () => (instant ? settleScript(script) : null),
+    [instant, script],
+  );
+  const shownMessages = flashback ?? visibleMessages;
+
+  // It is on screen the moment the scene opens, so it is immediately done.
+  useEffect(() => {
+    if (!flashback || runId === null) return;
+    for (const message of flashback) onMessageRef.current?.(message);
+    onFinishedRef.current?.();
+  }, [flashback, runId]);
 
   /* ----------------------------- auto-scroll ----------------------------- */
   useEffect(() => {
     const body = bodyRef.current;
     if (body) body.scrollTop = body.scrollHeight;
-  }, [visibleMessages, currentlyTyping]);
+  }, [shownMessages, currentlyTyping]);
 
   const isSelfSender = (sender: string) =>
     sender === "me" || (!!selfName && sender === selfName);
@@ -277,8 +335,8 @@ export default function ChatPanel({
   };
 
   const typingIsFirstInGroup =
-    !visibleMessages.length ||
-    visibleMessages[visibleMessages.length - 1]?.sender !== currentlyTyping;
+    !shownMessages.length ||
+    shownMessages[shownMessages.length - 1]?.sender !== currentlyTyping;
 
   return (
     <section className="flex h-full min-w-0 flex-1 flex-col">
@@ -292,11 +350,17 @@ export default function ChatPanel({
         <div className="min-w-0 flex-1">
           <div className="truncate text-[36px] font-bold">{chat?.name}</div>
           {currentlyTyping ? (
-            <div className="truncate text-[24px] font-semibold text-[#00a884]">typing…</div>
+            <div className="truncate text-[24px] font-semibold text-[#00a884]">
+              typing…
+            </div>
+          ) : headerStatus ? (
+            <div className="truncate text-[24px] font-medium text-[#667781]">
+              {headerStatus}
+            </div>
           ) : null}
         </div>
         <div className="flex items-center gap-1">
-          {finished ? (
+          {finished && !instant ? (
             <button
               type="button"
               onClick={startPlayback}
@@ -345,7 +409,7 @@ export default function ChatPanel({
         ) : null}
 
         <div className="flex flex-col">
-          {visibleMessages.map((message) => (
+          {shownMessages.map((message) => (
             <MessageBubble
               key={message.id}
               sender={isSelfSender(message.sender) ? "me" : message.sender}

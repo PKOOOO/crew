@@ -1,7 +1,6 @@
 import type { ChatEvent } from "@/types/chat";
 import type {
   ChatListEvent,
-  GroupInfoEvent,
   LockscreenEvent,
   NoteListItem,
   NotesEvent,
@@ -22,9 +21,8 @@ import type {
  *   9  Mwangi / Dad / Mom — never opened          convo8
  *   10 the final vibrate — "READ 11:43 PM"        convo8
  *   11 aftermath — RIP Maya                       convo9
- *   12 the chat sits in dead silence              convo10
- *   13 last seen yesterday at 11:43 PM            convo10
- *   14 the unsent drafts                          convo11
+ *   12 the chat sits in dead silence (flashback)   convo10
+ *   13 the unsent drafts                          convo11
  */
 
 /* 1 — Social media moment. Everyone comments. Except Maya: she types,
@@ -186,6 +184,7 @@ const scene3Lockscreen: LockscreenEvent[] = [
     app: "message",
     from: "THE CREW 🔥",
     preview: "Guys... Can I tell you something?",
+    icon: "/apple.png",
     delay: 2500,
   },
   {
@@ -441,6 +440,7 @@ const scene10Lockscreen: LockscreenEvent[] = [
     app: "message",
     from: "THE CREW 🔥",
     preview: "Guys... Can I tell you something?",
+    icon: "/apple.png",
     delay: 3000,
   },
   {
@@ -516,26 +516,10 @@ const scene12Whatsapp: ChatEvent[] = [
   { type: "typing", sender: "Leo", duration: 4500 },
 ];
 
-/* 13 — Then, the brutal notification: Last seen yesterday at 11:43 PM. */
-const scene13GroupInfo: GroupInfoEvent[] = [
-  {
-    type: "member",
-    name: "Maya",
-    status: "last seen yesterday at 11:43 PM",
-    highlight: true,
-    delay: 1400,
-  },
-  { type: "member", name: "You", status: "Online", isYou: true, delay: 1600 },
-  { type: "member", name: "Jay", status: "Online", isAdmin: true, delay: 1100 },
-  { type: "member", name: "Tash", status: "Online", isAdmin: true, delay: 1100 },
-  { type: "member", name: "Kevin", status: "Online", delay: 1100 },
-  { type: "member", name: "Aisha", status: "Online", delay: 1100 },
-  { type: "member", name: "Leo", status: "Online", delay: 1100 },
-];
 
-/* 14 — Hundreds of desperate, unsent drafts scroll rapidly up the screen,
+/* 13 — Hundreds of desperate, unsent drafts scroll rapidly up the screen,
  * slowing to linger on the very last entry. */
-const scene14Notes: NotesEvent[] = [
+const scene13Notes: NotesEvent[] = [
   {
     type: "drafts",
     duration: 24000,
@@ -580,7 +564,7 @@ export const scenesSample: Scene[] = [
   {
     id: "scene-3",
     statusTime: "23:43",
-    statusDate: "Sunday 19 July",
+    statusDate: "Sun 19",
     appType: "lockscreen",
     label: "3 · Act One close — READ 11:43 PM",
     events: scene3Lockscreen,
@@ -638,7 +622,7 @@ export const scenesSample: Scene[] = [
   {
     id: "scene-10",
     statusTime: "23:43",
-    statusDate: "Sunday 19 July",
+    statusDate: "Sun 19",
     appType: "lockscreen",
     label: "10 · One final vibrate — READ 11:43 PM",
     events: scene10Lockscreen,
@@ -655,27 +639,21 @@ export const scenesSample: Scene[] = [
     id: "scene-12",
     statusTime: "23:44",
     appType: "whatsapp",
-    label: "12 · The chat sits in dead silence",
+    label: "12 · The chat sits in dead silence (flashback)",
     chatName: "THE CREW 🔥",
+    instant: true,
+    headerStatus: "Maya · last seen yesterday at 11:43 PM",
     events: scene12Whatsapp,
   },
   {
     id: "scene-13",
-    statusTime: "09:12",
-    appType: "groupinfo",
-    label: "13 · Last seen yesterday at 11:43 PM",
-    groupName: "THE CREW 🔥",
-    events: scene13GroupInfo,
-  },
-  {
-    id: "scene-14",
     statusTime: "23:43",
     appType: "notes",
-    label: "14 · Notes — the unsent drafts",
+    label: "13 · Notes — the unsent drafts",
     dark: true,
     notes: mayaNotes,
     noteTitle: "drafts",
     noteDate: "19 July 2026 at 23:43",
-    events: scene14Notes,
+    events: scene13Notes,
   },
 ];

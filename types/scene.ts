@@ -116,6 +116,8 @@ export type LockscreenEvent =
       app: "call" | "message";
       from: string;
       preview: string;
+      /** App icon image under /public; falls back to a generic app tile. */
+      icon?: string;
       delay: number;
     }
   | {
@@ -151,6 +153,13 @@ export type Scene =
       chatName?: string;
       /** Whose phone this is; defaults to "Maya". */
       selfName?: string;
+      /**
+       * Flashback: the whole conversation is already on screen when the scene
+       * opens — no delays, no typing indicators, nothing lands live.
+       */
+      instant?: boolean;
+      /** Line under the chat name, e.g. a member's last-seen. */
+      headerStatus?: string;
     })
   | (SceneBase & {
       appType: "chatlist";

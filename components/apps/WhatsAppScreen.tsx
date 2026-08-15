@@ -10,6 +10,10 @@ export type WhatsAppScreenProps = {
   chatName: string;
   /** Whose phone this is — their messages render outgoing. */
   selfName?: string;
+  /** Flashback: show the whole conversation at once, nothing plays out. */
+  instant?: boolean;
+  /** Line under the chat name, e.g. a member's last-seen. */
+  headerStatus?: string;
   autoStart?: boolean;
   /** Called once when the script has played to the end. */
   onFinished?: () => void;
@@ -24,6 +28,8 @@ export default function WhatsAppScreen({
   events,
   chatName,
   selfName = "Maya",
+  instant = false,
+  headerStatus,
   autoStart = false,
   onFinished,
 }: WhatsAppScreenProps) {
@@ -64,6 +70,8 @@ export default function WhatsAppScreen({
         senderColors={senderColors}
         autoStart={autoStart}
         selfName={selfName}
+        instant={instant}
+        headerStatus={headerStatus}
         onFinished={onFinished}
       />
     </div>
