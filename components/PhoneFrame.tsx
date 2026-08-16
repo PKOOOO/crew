@@ -64,8 +64,7 @@ export default function PhoneFrame({
   const overlayStatusBar =
     scene.appType === "tiktok" ||
     scene.appType === "lockscreen" ||
-    scene.appType === "groupinfo" ||
-    scene.appType === "chatlist";
+    scene.appType === "groupinfo";
 
   // Notes on a black background keeps its own bar, just tinted to match.
   const darkStatusBar =
@@ -191,6 +190,8 @@ function Screen({
           selfName={scene.selfName}
           instant={scene.instant}
           headerStatus={scene.headerStatus}
+          textScale={scene.textScale}
+          focus={scene.focus}
           autoStart={autoStart}
           // The chat latches its run at mount, so it needs telling directly.
           paused={paused}
@@ -203,6 +204,7 @@ function Screen({
           events={scene.events}
           unreadTotal={scene.unreadTotal}
           groupTotal={scene.groupTotal}
+          pinned={scene.pinned}
           autoStart={playing}
           onFinished={onFinished}
         />
@@ -222,6 +224,7 @@ function Screen({
         <TikTokScreen
           events={scene.events}
           username={scene.username}
+          video={scene.video}
           autoStart={playing}
           onFinished={onFinished}
         />

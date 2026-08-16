@@ -28,20 +28,59 @@ export type TikTokEvent =
       text: string;
     };
 
-export type ChatListEvent = {
-  /** One chat row in the list, revealed after delay. */
-  type: "chat";
+export type ChatListEvent =
+  | {
+      /** One chat row in the list, revealed after delay. */
+      type: "chat";
+      name: string;
+      preview: string;
+      time: string;
+      /** A missed call row shows the red missed-call arrow instead of ticks. */
+      kind?: "message" | "missed-call";
+      /** Ticks on the row's preview: grey = delivered but never opened. */
+      ticks?: "none" | "sent" | "delivered" | "read";
+      unreadCount?: number;
+      /** Sound + emphasis as the row lands. */
+      highlight?: boolean;
+      delay: number;
+    }
+  | {
+      /**
+       * An incoming voice call: the accept/decline banner drops in and the
+       * row sits on "Ringing" for duration, then goes missed when nobody
+       * picks up.
+       */
+      type: "call";
+      name: string;
+      time: string;
+      /** How long it rings before it gives up, ms. */
+      duration: number;
+      delay: number;
+    };
+
+/**
+ * A slow push-in on one message once the scene has settled. The bubble is
+ * measured and fitted to the screen — nothing else stays in frame.
+ */
+export type FocusBeat = {
+  /** id of the message to move in on. */
+  messageId: string;
+  /** Fades in to the left of that message's timestamp. */
+  label?: string;
+  /** Hold before the move starts, ms. Defaults to 2500. */
+  delay?: number;
+  /** Ceiling on the fitted scale, so a short bubble can't fill the wall. */
+  maxScale?: number;
+  /** Breathing room left around the bubble, px. Defaults to 90. */
+  margin?: number;
+};
+
+/** A chat held at the top of the list, above anything that lands. */
+export type PinnedChat = {
   name: string;
   preview: string;
   time: string;
-  /** A missed call row shows the red missed-call arrow instead of ticks. */
-  kind?: "message" | "missed-call";
-  /** Ticks on the row's preview: grey = delivered but never opened. */
-  ticks?: "none" | "sent" | "delivered" | "read";
   unreadCount?: number;
-  /** Sound + emphasis as the row lands. */
-  highlight?: boolean;
-  delay: number;
 };
 
 export type GroupInfoEvent = {
@@ -160,6 +199,16 @@ export type Scene =
       instant?: boolean;
       /** Line under the chat name, e.g. a member's last-seen. */
       headerStatus?: string;
+      /**
+       * Scales the whole message column — text and bubbles together. 1 is the
+       * standard size; 1.25 makes a sparse scene read from the back of a room.
+       */
+      textScale?: number;
+      /**
+       * After the scene settles, push in on one message and let a line of
+       * text fade in beside its timestamp.
+       */
+      focus?: FocusBeat;
     })
   | (SceneBase & {
       appType: "chatlist";
@@ -167,6 +216,8 @@ export type Scene =
       /** Counts shown in the filter pills. */
       unreadTotal?: number;
       groupTotal?: number;
+      /** Group kept at the top of the list. */
+      pinned?: PinnedChat;
     })
   | (SceneBase & {
       appType: "groupinfo";
@@ -175,7 +226,13 @@ export type Scene =
       /** Total shown in the "Group · N members" line; defaults to row count. */
       memberCount?: number;
     })
-  | (SceneBase & { appType: "tiktok"; events: TikTokEvent[]; username?: string })
+  | (SceneBase & {
+      appType: "tiktok";
+      events: TikTokEvent[];
+      username?: string;
+      /** Clip playing behind the UI (path under /public), e.g. "/maya.mp4". */
+      video?: string;
+    })
   | (SceneBase & {
       appType: "notes";
       events: NotesEvent[];

@@ -1,15 +1,19 @@
 "use client";
 
 import type React from "react";
+import Image from "next/image";
 
 export function Avatar({
   name,
   color,
   size,
+  image,
 }: {
   name: string;
   color: string;
   size: number;
+  /** Photo to use instead of initials — the group's picture. */
+  image?: string;
 }) {
   const initials = name
     .split(" ")
@@ -17,6 +21,20 @@ export function Avatar({
     .slice(0, 2)
     .map((part) => part[0]?.toUpperCase() ?? "")
     .join("");
+
+  if (image) {
+    return (
+      <Image
+        src={image}
+        alt=""
+        width={size}
+        height={size}
+        unoptimized
+        className="shrink-0 rounded-full object-cover"
+        style={{ width: size, height: size }}
+      />
+    );
+  }
 
   return (
     <span

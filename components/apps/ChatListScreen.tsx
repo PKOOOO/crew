@@ -1,51 +1,72 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import {
   Archive,
   Bell,
   Camera,
+  Check,
   MessageCircle,
   MoreHorizontal,
   Phone,
+  PhoneIncoming,
   PhoneMissed,
+  Pin,
   Plus,
   Search,
   Settings,
   Users,
+  X,
 } from "lucide-react";
-import type { ChatListEvent } from "@/types/scene";
-import { buildSenderColors, resolveSenderColor } from "@/lib/sender-colors";
+import type { ChatListEvent, PinnedChat } from "@/types/scene";
+import {
+  buildSenderColors,
+  GROUP_AVATAR,
+  resolveSenderColor,
+} from "@/lib/sender-colors";
 
 export type ChatListScreenProps = {
   events: ChatListEvent[];
   unreadTotal?: number;
   groupTotal?: number;
+  /** Group kept at the top of the list, above everything that lands. */
+  pinned?: PinnedChat;
   autoStart?: boolean;
   /** Called once when all rows have appeared. */
   onFinished?: () => void;
 };
 
 type Row = {
+  id: string;
   name: string;
   preview: string;
   time: string;
-  kind: "message" | "missed-call";
+  kind: "message" | "missed-call" | "ringing";
   ticks: "none" | "sent" | "delivered" | "read";
   unreadCount: number;
   highlight: boolean;
 };
 
+/** Rings and buzzes together while a call comes in. */
+const RING_SRC = "/call.mp3";
+const VIBRATE_SRC = "/vibrate.mp3";
+
 export default function ChatListScreen({
   events,
   unreadTotal = 139,
   groupTotal = 23,
+  pinned,
   autoStart = false,
   onFinished,
 }: ChatListScreenProps) {
   const [rows, setRows] = useState<Row[]>([]);
+  /** Who is calling right now, if anyone — drives the accept/decline banner. */
+  const [incomingCall, setIncomingCall] = useState<string | null>(null);
   const onFinishedRef = useRef(onFinished);
   const soundRef = useRef<HTMLAudioElement | null>(null);
+  const ringRef = useRef<HTMLAudioElement | null>(null);
+  const vibrateRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     onFinishedRef.current = onFinished;
@@ -63,13 +84,67 @@ export default function ChatListScreen({
         timer = setTimeout(resolve, ms);
       });
 
+    /** Ringtone and buzz run together, both looping until the call ends. */
+    const startRinging = () => {
+      const ring = (ringRef.current ??= new Audio(RING_SRC));
+      const buzz = (vibrateRef.current ??= new Audio(VIBRATE_SRC));
+      for (const sound of [ring, buzz]) {
+        sound.loop = true;
+        sound.currentTime = 0;
+        void sound.play().catch(() => {});
+      }
+    };
+
+    const stopRinging = () => {
+      ringRef.current?.pause();
+      vibrateRef.current?.pause();
+    };
+
     const play = async () => {
       setRows([]);
+      setIncomingCall(null);
 
+      let autoId = 0;
       for (const event of events) {
         if (cancelled) return;
         await wait(event.delay);
         if (cancelled) return;
+
+        const id = `row-${autoId++}`;
+
+        if (event.type === "call") {
+          // Ringing: banner in, row live, both sounds going.
+          setRows((previous) => [
+            ...previous,
+            {
+              id,
+              name: event.name,
+              preview: "Voice call",
+              time: event.time,
+              kind: "ringing",
+              ticks: "none",
+              unreadCount: 0,
+              highlight: true,
+            },
+          ]);
+          setIncomingCall(event.name);
+          startRinging();
+
+          await wait(event.duration);
+
+          // Nobody picks up.
+          stopRinging();
+          setIncomingCall(null);
+          if (cancelled) return;
+          setRows((previous) =>
+            previous.map((row) =>
+              row.id === id
+                ? { ...row, kind: "missed-call", preview: "Missed voice call" }
+                : row,
+            ),
+          );
+          continue;
+        }
 
         if (event.highlight) {
           const sound = (soundRef.current ??= new Audio("/notification.wav"));
@@ -80,6 +155,7 @@ export default function ChatListScreen({
         setRows((previous) => [
           ...previous,
           {
+            id,
             name: event.name,
             preview: event.preview,
             time: event.time,
@@ -99,25 +175,64 @@ export default function ChatListScreen({
     return () => {
       cancelled = true;
       if (timer) clearTimeout(timer);
+      // A stopped scene stops ringing too.
+      soundRef.current?.pause();
+      ringRef.current?.pause();
+      vibrateRef.current?.pause();
     };
   }, [events, autoStart]);
 
   const colors = buildSenderColors(events.map((event) => event.name));
 
   return (
-    <div className="flex h-full w-full flex-col overflow-hidden bg-black text-white">
+    <div className="relative flex h-full w-full flex-col overflow-hidden bg-white text-[#111b21]">
+      {/* Incoming call banner — an OS overlay, so it stays dark over the
+          light app, exactly as it does on the phone. */}
+      {incomingCall ? (
+        <div
+          className="absolute left-1/2 top-4 z-30 flex w-[860px] max-w-[90%] -translate-x-1/2 items-center gap-8 rounded-[28px] bg-[#1f1f1f] px-9 py-6 shadow-[0_16px_40px_rgba(0,0,0,0.35)]"
+          style={{ animation: "wa-notif-in 0.35s ease-out" }}
+        >
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-3">
+              <Image
+                src="/apple.png"
+                alt=""
+                width={34}
+                height={34}
+                unoptimized
+                className="h-[34px] w-[34px] shrink-0 rounded-[8px]"
+              />
+              <span className="truncate text-[28px] font-medium text-white/60">
+                WhatsApp Audio…
+              </span>
+            </div>
+            <div className="mt-1 truncate text-[44px] font-bold text-white">
+              {incomingCall}
+            </div>
+          </div>
+
+          <span className="flex h-[76px] w-[76px] shrink-0 items-center justify-center rounded-full bg-[#e5342c]">
+            <X className="h-10 w-10 text-white" strokeWidth={3.5} />
+          </span>
+          <span className="flex h-[76px] w-[76px] shrink-0 items-center justify-center rounded-full bg-[#0b6bf2]">
+            <Check className="h-10 w-10 text-white" strokeWidth={3.5} />
+          </span>
+        </div>
+      ) : null}
+
       <div className="flex h-full w-full flex-col px-6 md:px-10">
         {/* Top bar */}
         <div className="flex shrink-0 items-center justify-between pt-3">
-          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-white/10">
+          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-[#f0f2f5]">
             <MoreHorizontal className="h-6 w-6" strokeWidth={2.5} />
           </span>
           <div className="flex items-center gap-3">
-            <span className="flex h-12 w-12 items-center justify-center rounded-full bg-white/10">
+            <span className="flex h-12 w-12 items-center justify-center rounded-full bg-[#f0f2f5]">
               <Camera className="h-6 w-6" strokeWidth={2} />
             </span>
             <span className="flex h-12 w-12 items-center justify-center rounded-full bg-[#25d366]">
-              <Plus className="h-7 w-7 text-black" strokeWidth={3} />
+              <Plus className="h-7 w-7 text-white" strokeWidth={3} />
             </span>
           </div>
         </div>
@@ -127,19 +242,19 @@ export default function ChatListScreen({
           <h1 className="text-[44px] font-bold leading-tight md:text-[52px]">
             Chats
           </h1>
-          <div className="flex h-14 flex-1 items-center gap-4 rounded-full bg-[#1c1c1e] px-5 md:h-16">
+          <div className="flex h-14 flex-1 items-center gap-4 rounded-full bg-[#f0f2f5] px-5 md:h-16">
             <Search
-              className="h-6 w-6 shrink-0 text-white/50"
+              className="h-6 w-6 shrink-0 text-[#8696a0]"
               strokeWidth={2.5}
             />
-            <span className="text-[22px] font-medium text-white/50 md:text-[26px]">
+            <span className="text-[22px] font-medium text-[#8696a0] md:text-[26px]">
               Ask Meta AI or Search
             </span>
           </div>
         </div>
 
         {/* Filter pills + archived share a row on wide screens */}
-        <div className="mt-3 flex shrink-0 flex-col gap-3 border-b border-white/10 pb-3 md:flex-row md:items-center md:justify-between">
+        <div className="mt-3 flex shrink-0 flex-col gap-3 border-b border-[#e9edef] pb-3 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-2.5 overflow-hidden">
             <Pill active>All</Pill>
             <Pill>Unread {unreadTotal}</Pill>
@@ -147,18 +262,71 @@ export default function ChatListScreen({
             <Pill>Groups {groupTotal}</Pill>
           </div>
           <div className="flex items-center gap-5 md:shrink-0">
-            <Archive className="h-7 w-7 text-white/70" strokeWidth={2} />
+            <Archive className="h-7 w-7 text-[#54656f]" strokeWidth={2} />
             <span className="flex-1 text-[26px] font-semibold">Archived</span>
-            <span className="text-[22px] text-white/50">27</span>
+            <span className="text-[22px] text-[#8696a0]">27</span>
           </div>
         </div>
 
         {/* Chat rows — full width of the landscape screen */}
         <div className="min-h-0 flex-1 overflow-y-auto">
-          {rows.map((row, index) => (
+          {/* The group sits pinned above everything, there from the start. */}
+          {pinned ? (
+            <div className="flex w-full items-center gap-6 border-b border-[#e9edef] py-6 md:gap-8 md:py-7">
+              <Image
+                src={GROUP_AVATAR}
+                alt=""
+                width={104}
+                height={104}
+                unoptimized
+                className="h-[86px] w-[86px] shrink-0 rounded-full object-cover md:h-[104px] md:w-[104px]"
+              />
+
+              <div className="min-w-0 flex-1">
+                <div className="flex items-baseline gap-3">
+                  <span className="min-w-0 flex-1 truncate text-[36px] font-bold leading-tight md:text-[44px]">
+                    {pinned.name}
+                  </span>
+                  <span
+                    className={`shrink-0 text-[22px] md:text-[28px] ${
+                      pinned.unreadCount
+                        ? "font-semibold text-[#1da851]"
+                        : "text-[#667781]"
+                    }`}
+                  >
+                    {pinned.time}
+                  </span>
+                </div>
+
+                <div className="mt-1 flex items-center gap-2.5">
+                  <span
+                    className={`min-w-0 flex-1 truncate text-[26px] md:text-[32px] ${
+                      pinned.unreadCount
+                        ? "font-semibold text-[#111b21]"
+                        : "text-[#667781]"
+                    }`}
+                  >
+                    {pinned.preview}
+                  </span>
+                  <Pin
+                    className="h-7 w-7 shrink-0 rotate-45 text-[#8696a0] md:h-8 md:w-8"
+                    fill="currentColor"
+                    strokeWidth={0}
+                  />
+                  {pinned.unreadCount ? (
+                    <span className="flex h-9 min-w-9 shrink-0 items-center justify-center rounded-full bg-[#25d366] px-2 text-[20px] font-bold text-white md:h-11 md:min-w-11 md:text-[24px]">
+                      {pinned.unreadCount}
+                    </span>
+                  ) : null}
+                </div>
+              </div>
+            </div>
+          ) : null}
+
+          {rows.map((row) => (
             <div
-              key={`${row.name}-${index}`}
-              className="flex w-full items-center gap-6 border-b border-white/[0.07] py-6 md:gap-8 md:py-7"
+              key={row.id}
+              className="flex w-full items-center gap-6 border-b border-[#e9edef] py-6 md:gap-8 md:py-7"
               style={{ animation: "wa-slide-up 0.35s ease-out" }}
             >
               <span
@@ -175,7 +343,7 @@ export default function ChatListScreen({
                   </span>
                   <span
                     className={`shrink-0 text-[22px] md:text-[28px] ${
-                      row.unreadCount ? "font-semibold text-[#25d366]" : "text-white/50"
+                      row.unreadCount ? "font-semibold text-[#1da851]" : "text-[#667781]"
                     }`}
                   >
                     {row.time}
@@ -188,20 +356,35 @@ export default function ChatListScreen({
                       className="h-6 w-6 shrink-0 text-[#f15c6d] md:h-8 md:w-8"
                       strokeWidth={2.5}
                     />
+                  ) : row.kind === "ringing" ? (
+                    <PhoneIncoming
+                      className="h-6 w-6 shrink-0 text-[#25d366] md:h-8 md:w-8"
+                      strokeWidth={2.5}
+                    />
                   ) : row.ticks !== "none" ? (
                     <Ticks status={row.ticks} />
                   ) : null}
-                  <span
-                    className={`min-w-0 flex-1 truncate text-[26px] md:text-[32px] ${
-                      row.unreadCount
-                        ? "font-semibold text-white"
-                        : "text-white/60"
-                    }`}
-                  >
-                    {row.preview}
-                  </span>
+
+                  {row.kind === "ringing" ? (
+                    <span className="min-w-0 flex-1 truncate text-[26px] md:text-[32px]">
+                      <span className="font-bold text-[#25d366]">
+                        {row.preview}
+                      </span>
+                      <span className="text-[#667781]"> • Ringing</span>
+                    </span>
+                  ) : (
+                    <span
+                      className={`min-w-0 flex-1 truncate text-[26px] md:text-[32px] ${
+                        row.unreadCount
+                          ? "font-semibold text-[#111b21]"
+                          : "text-[#667781]"
+                      }`}
+                    >
+                      {row.preview}
+                    </span>
+                  )}
                   {row.unreadCount ? (
-                    <span className="flex h-9 min-w-9 shrink-0 items-center justify-center rounded-full bg-[#25d366] px-2 text-[20px] font-bold text-black md:h-11 md:min-w-11 md:text-[24px]">
+                    <span className="flex h-9 min-w-9 shrink-0 items-center justify-center rounded-full bg-[#25d366] px-2 text-[20px] font-bold text-white md:h-11 md:min-w-11 md:text-[24px]">
                       {row.unreadCount}
                     </span>
                   ) : null}
@@ -212,7 +395,7 @@ export default function ChatListScreen({
         </div>
 
         {/* Bottom nav */}
-        <div className="mx-auto mb-2 mt-2 flex w-full max-w-[820px] shrink-0 items-center justify-around rounded-full bg-[#1c1c1e] px-2 py-2.5">
+        <div className="mx-auto mb-2 mt-2 flex w-full max-w-[820px] shrink-0 items-center justify-around rounded-full bg-[#f0f2f5] px-2 py-2.5">
           <NavItem icon={<Bell className="h-7 w-7" strokeWidth={2} />} label="Updates" />
           <NavItem
             icon={<Phone className="h-7 w-7" strokeWidth={2} />}
@@ -246,7 +429,7 @@ function Ticks({ status }: { status: "sent" | "delivered" | "read" }) {
     <svg
       viewBox="0 0 18 12"
       className={`h-6 w-8 shrink-0 md:h-8 md:w-11 ${
-        status === "read" ? "text-[#53bdeb]" : "text-white/45"
+        status === "read" ? "text-[#53bdeb]" : "text-[#8696a0]"
       }`}
       fill="none"
       stroke="currentColor"
@@ -271,7 +454,7 @@ function Pill({
   return (
     <span
       className={`shrink-0 whitespace-nowrap rounded-full px-5 py-2 text-[22px] font-semibold ${
-        active ? "bg-[#0a3d2a] text-[#25d366]" : "bg-[#1c1c1e] text-white/70"
+        active ? "bg-[#d9fdd3] text-[#1d7a4c]" : "bg-[#f0f2f5] text-[#54656f]"
       }`}
     >
       {children}
@@ -293,12 +476,12 @@ function NavItem({
   return (
     <div
       className={`relative flex flex-col items-center gap-1 rounded-full px-4 py-1 ${
-        active ? "bg-white/10 text-white" : "text-white/60"
+        active ? "bg-white text-[#111b21] shadow-[0_1px_3px_rgba(11,20,26,0.12)]" : "text-[#54656f]"
       }`}
     >
       {icon}
       {badge ? (
-        <span className="absolute -top-1 left-1/2 ml-2 flex h-6 min-w-6 items-center justify-center rounded-full bg-[#25d366] px-1.5 text-[14px] font-bold text-black">
+        <span className="absolute -top-1 left-1/2 ml-2 flex h-6 min-w-6 items-center justify-center rounded-full bg-[#25d366] px-1.5 text-[14px] font-bold text-white">
           {badge}
         </span>
       ) : null}

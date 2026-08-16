@@ -10,7 +10,6 @@ import {
   MessageCircle,
   Moon,
   Phone,
-  Sun,
   X,
 } from "lucide-react";
 import type { LockscreenEvent } from "@/types/scene";
@@ -36,17 +35,8 @@ type Banner = {
   statusLabel?: string;
 };
 
-/** Conditions on the lockscreen widget — set dressing, not scene data. */
-const WEATHER = {
-  place: "Mvita",
-  temperature: "28°",
-  condition: "Partly Cloudy",
-  high: "29°",
-  low: "23°",
-  windDirection: "S",
-  windSpeed: "23",
-  uvIndex: "7",
-};
+/** Place shown beside the date — set dressing, not scene data. */
+const WEATHER = { place: "Mvita" };
 
 const STATUS_LABEL: Record<NonNullable<Banner["status"]>, string> = {
   delivered: "Delivered",
@@ -167,74 +157,34 @@ export default function LockscreenScreen({
       <div className="absolute -right-20 top-1/3 h-80 w-[34rem] rounded-full bg-white/8 blur-3xl" />
       <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/25 to-transparent" />
 
-      {/* Landscape split: clock and widgets left, notifications right */}
-      <div className="relative flex h-full gap-12 px-16 pb-8 pt-14">
-        {/* ------------------------------ left ------------------------------ */}
-        <div className="flex min-w-0 flex-[1.1] flex-col items-center">
-          <Lock className="h-9 w-9 shrink-0" strokeWidth={2.6} />
+      {/* One centered column: clock on top, notifications running full width
+          underneath it. */}
+      <div className="relative flex h-full flex-col items-center px-16 pb-28 pt-12">
+        <Lock className="h-9 w-9 shrink-0" strokeWidth={2.6} />
 
-          <div
-            suppressHydrationWarning
-            className="mt-4 flex shrink-0 items-center gap-3 text-[30px] font-semibold"
-          >
-            <span>{date}</span>
-            {nighttime ? (
-              <Moon className="h-8 w-8" fill="white" strokeWidth={0} />
-            ) : (
-              <CloudSun className="h-9 w-9" strokeWidth={2.2} />
-            )}
-            <span>{WEATHER.place}</span>
-          </div>
-
-          {/* Frosted-glass clock */}
-          <div
-            suppressHydrationWarning
-            className="bg-gradient-to-b from-white/70 to-white/25 bg-clip-text text-[210px] font-semibold leading-[0.95] tracking-tight text-transparent drop-shadow-[0_2px_12px_rgba(0,0,0,0.18)]"
-          >
-            {time}
-          </div>
-
-          <div className="flex-1" />
-
-          {/* Weather row */}
-          <div className="flex w-full shrink-0 items-center justify-center gap-10">
-            <div className="min-w-0">
-              <div className="flex items-center gap-3">
-                {nighttime ? (
-                  <Moon className="h-9 w-9 shrink-0" fill="white" strokeWidth={0} />
-                ) : (
-                  <CloudSun className="h-10 w-10 shrink-0" strokeWidth={2.2} />
-                )}
-                <span className="text-[38px] font-bold leading-none">
-                  {WEATHER.temperature}
-                </span>
-              </div>
-              <div className="mt-2 truncate text-[26px] font-semibold">
-                {WEATHER.condition}
-              </div>
-              <div className="text-[24px] font-medium text-white/70">
-                H:{WEATHER.high} L:{WEATHER.low}
-              </div>
-            </div>
-
-            <div className="flex h-28 w-28 shrink-0 flex-col items-center justify-center rounded-full bg-white/15 backdrop-blur-md">
-              <span className="text-[20px] font-semibold text-white/80">
-                {WEATHER.windDirection}
-              </span>
-              <span className="text-[30px] font-bold leading-tight">
-                {WEATHER.windSpeed}
-              </span>
-              <span className="text-[16px] font-semibold text-white/80">
-                KM/H
-              </span>
-            </div>
-
-            <UvGauge value={WEATHER.uvIndex} />
-          </div>
+        <div
+          suppressHydrationWarning
+          className="mt-4 flex shrink-0 items-center gap-3 text-[30px] font-semibold"
+        >
+          <span>{date}</span>
+          {nighttime ? (
+            <Moon className="h-8 w-8" fill="white" strokeWidth={0} />
+          ) : (
+            <CloudSun className="h-9 w-9" strokeWidth={2.2} />
+          )}
+          <span>{WEATHER.place}</span>
         </div>
 
-        {/* ------------------------------ right ----------------------------- */}
-        <div className="flex min-w-0 flex-1 flex-col">
+        {/* Frosted-glass clock */}
+        <div
+          suppressHydrationWarning
+          className="shrink-0 bg-gradient-to-b from-white/70 to-white/25 bg-clip-text text-[190px] font-semibold leading-[0.95] tracking-tight text-transparent drop-shadow-[0_2px_12px_rgba(0,0,0,0.18)]"
+        >
+          {time}
+        </div>
+
+        {/* Notification centre, below the clock and running the full width */}
+        <div className="mt-10 flex min-h-0 w-full max-w-[1240px] flex-1 flex-col">
           <div className="flex shrink-0 items-center justify-between gap-4">
             <span className="text-[38px] font-bold">Notification Centre</span>
             <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-white/20 backdrop-blur-md">
@@ -242,35 +192,33 @@ export default function LockscreenScreen({
             </span>
           </div>
 
-          <div className="mt-6 flex min-h-0 flex-1 flex-col gap-4 overflow-hidden">
+          <div className="mt-6 flex min-h-0 flex-1 flex-col gap-5 overflow-hidden">
             {banners.map((banner) => (
               <div
                 key={banner.id}
-                className="flex shrink-0 items-center gap-5 rounded-[32px] bg-white/15 px-6 py-5 shadow-[0_8px_24px_rgba(0,0,0,0.22)] ring-1 ring-white/15 backdrop-blur-xl"
+                className="flex w-full shrink-0 items-center gap-7 rounded-[36px] bg-white/15 px-9 py-8 shadow-[0_8px_24px_rgba(0,0,0,0.22)] ring-1 ring-white/15 backdrop-blur-xl"
                 style={{ animation: "wa-notif-in 0.35s ease-out" }}
               >
                 <AppIcon app={banner.app} icon={banner.icon} />
 
                 <div className="min-w-0 flex-1">
                   <div className="flex items-baseline justify-between gap-3">
-                    <span className="truncate text-[30px] font-bold">
+                    <span className="truncate text-[34px] font-bold">
                       {banner.from}
                     </span>
-                    <span className="shrink-0 text-[22px] font-medium text-white/70">
+                    <span className="shrink-0 text-[24px] font-medium text-white/70">
                       now
                     </span>
                   </div>
-                  <div className="truncate text-[27px] font-medium text-white/95">
+                  <div className="text-[52px] font-extrabold leading-tight text-white">
                     {banner.preview}
                   </div>
-                  {banner.status ? (
-                    <div
-                      className={`mt-1 text-[23px] font-bold ${
-                        banner.status === "read"
-                          ? "text-white"
-                          : "text-white/65"
-                      }`}
-                    >
+                  {/* A delivered or read message says so with ticks, not
+                      words. Anything else (a missed call) still needs text. */}
+                  {banner.status === "delivered" || banner.status === "read" ? (
+                    <Ticks read={banner.status === "read"} />
+                  ) : banner.status ? (
+                    <div className="mt-2 text-[26px] font-bold text-white/65">
                       {banner.statusLabel ?? STATUS_LABEL[banner.status]}
                     </div>
                   ) : null}
@@ -290,6 +238,27 @@ export default function LockscreenScreen({
       </span>
       <span className="absolute bottom-3 left-1/2 h-1.5 w-56 -translate-x-1/2 rounded-full bg-white/80" />
     </div>
+  );
+}
+
+/** Double check on the notification — blue once it has been read. */
+function Ticks({ read }: { read: boolean }) {
+  return (
+    <svg
+      viewBox="0 0 18 12"
+      className={`mt-3 h-[44px] w-[62px] ${
+        read ? "text-[#53bdeb]" : "text-white/60"
+      }`}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.7}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-label={read ? "Read" : "Delivered"}
+    >
+      <path d="M1 6.5l3.2 3.2L10.5 2.5" />
+      <path d="M6.5 9.7L12.8 2.5" />
+    </svg>
   );
 }
 
@@ -319,43 +288,6 @@ function AppIcon({ app, icon }: { app: "call" | "message"; icon?: string }) {
       ) : (
         <MessageCircle className="h-10 w-10" fill="white" strokeWidth={0} />
       )}
-    </span>
-  );
-}
-
-/** UV index dial — an open ring with a bead at the current value. */
-function UvGauge({ value }: { value: string }) {
-  return (
-    <span className="relative flex h-28 w-28 shrink-0 items-center justify-center">
-      <svg viewBox="0 0 100 100" className="absolute inset-0 h-full w-full">
-        <circle
-          cx="50"
-          cy="50"
-          r="44"
-          fill="none"
-          stroke="rgba(255,255,255,0.25)"
-          strokeWidth="7"
-          strokeLinecap="round"
-          strokeDasharray="207 277"
-          transform="rotate(120 50 50)"
-        />
-        <circle
-          cx="50"
-          cy="50"
-          r="44"
-          fill="none"
-          stroke="rgba(255,255,255,0.85)"
-          strokeWidth="7"
-          strokeLinecap="round"
-          strokeDasharray="118 277"
-          transform="rotate(120 50 50)"
-        />
-        <circle cx="82" cy="27" r="6" fill="white" />
-      </svg>
-      <span className="relative flex flex-col items-center">
-        <span className="text-[32px] font-bold leading-none">{value}</span>
-        <Sun className="mt-1 h-5 w-5" strokeWidth={2.6} />
-      </span>
     </span>
   );
 }

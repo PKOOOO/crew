@@ -17,6 +17,8 @@ import type { TikTokEvent } from "@/types/scene";
 export type TikTokScreenProps = {
   events: TikTokEvent[];
   username?: string;
+  /** The clip playing behind the UI (path under /public). */
+  video?: string;
   autoStart?: boolean;
   /** Called once when all events have played. */
   onFinished?: () => void;
@@ -47,6 +49,7 @@ function formatCount(count: number): string {
 export default function TikTokScreen({
   events,
   username = "maya.k",
+  video,
   autoStart = false,
   onFinished,
 }: TikTokScreenProps) {
@@ -55,6 +58,34 @@ export default function TikTokScreen({
   const [likes, setLikes] = useState(0);
   const onFinishedRef = useRef(onFinished);
   const likesSoundRef = useRef<HTMLAudioElement | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const backdropRef = useRef<HTMLVideoElement>(null);
+
+  /* The clip runs with the scene: from the top when it starts, stopped dead
+   * when the curtain shuts. */
+  useEffect(() => {
+    const main = videoRef.current;
+    const backdrop = backdropRef.current;
+    if (!main) return;
+
+    if (!autoStart) {
+      main.pause();
+      backdrop?.pause();
+      return;
+    }
+
+    main.currentTime = 0;
+    if (backdrop) backdrop.currentTime = 0;
+
+    // Autoplay with sound is blocked until the page has been clicked. The
+    // display's "tap to enable sound" gate handles that — but if it is still
+    // refused, fall back to a muted play so the clip is at least visible.
+    void main.play().catch(() => {
+      main.muted = true;
+      void main.play().catch(() => {});
+    });
+    void backdrop?.play().catch(() => {});
+  }, [autoStart, video]);
 
   useEffect(() => {
     onFinishedRef.current = onFinished;
@@ -152,8 +183,33 @@ export default function TikTokScreen({
 
   return (
     <div className="relative h-full w-full overflow-hidden bg-black text-white">
-      {/* Video placeholder */}
-      <div className="absolute inset-0 bg-[radial-gradient(120%_80%_at_45%_35%,#3a3230_0%,#1a1614_50%,#0a0908_100%)]" />
+      {/* The clip. It is shot portrait and the frame is landscape, so the
+          video is contained at full height over a blurred, cropped copy of
+          itself — no black bars, the way the apps themselves handle it. */}
+      {video ? (
+        <>
+          <video
+            ref={backdropRef}
+            src={video}
+            muted
+            loop
+            playsInline
+            preload="auto"
+            aria-hidden
+            className="absolute inset-0 h-full w-full scale-110 object-cover blur-2xl brightness-[0.45]"
+          />
+          <video
+            ref={videoRef}
+            src={video}
+            loop
+            playsInline
+            preload="auto"
+            className="absolute inset-0 h-full w-full object-contain"
+          />
+        </>
+      ) : (
+        <div className="absolute inset-0 bg-[radial-gradient(120%_80%_at_45%_35%,#3a3230_0%,#1a1614_50%,#0a0908_100%)]" />
+      )}
 
       {/* Top tabs — pushed clear of the phone's overlay status bar */}
       <div className="absolute inset-x-0 top-0 z-20 flex items-center justify-center gap-6 px-5 pt-11 md:pt-14">
@@ -219,11 +275,11 @@ export default function TikTokScreen({
           overlapping them. */}
       <div className="absolute bottom-[96px] left-5 right-32 top-[20%] z-20 flex flex-col justify-end gap-3">
         {/* Comments */}
-        <div className="flex min-h-0 flex-1 flex-col justify-end gap-2.5 overflow-hidden">
+        <div className="flex min-h-0 flex-1 flex-col justify-end gap-4 overflow-hidden">
           {visibleComments.map((comment, index) => (
             <div
               key={`${comment.author}-${index}`}
-              className="w-fit max-w-full rounded-2xl bg-black/50 px-5 py-3 text-[30px] font-semibold leading-snug backdrop-blur-sm"
+              className="w-fit max-w-full rounded-2xl bg-black/50 px-7 py-4 text-[46px] font-bold leading-snug backdrop-blur-sm"
               style={{ animation: "wa-slide-up 0.3s ease-out" }}
             >
               <span className="font-semibold text-white/70">

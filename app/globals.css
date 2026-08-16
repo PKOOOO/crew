@@ -96,6 +96,30 @@
   }
 }
 
+/* The focused message's last-seen line and timestamp, breathing. */
+@keyframes wa-meta-breathe {
+  0%,
+  100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* Recording a voice note: the mic breathes in and out. */
+@keyframes wa-mic-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.25;
+    transform: scale(0.92);
+  }
+}
+
 @keyframes wa-typing-dot {
   0%,
   60%,

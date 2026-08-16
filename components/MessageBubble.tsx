@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { Ban } from "lucide-react";
+import VoiceNote from "@/components/VoiceNote";
 
 export type MessageStatus = "sent" | "delivered" | "read";
 
@@ -10,6 +11,20 @@ export type MessageBubbleProps = {
   text: string;
   /** Optional image attachment (path under /public). */
   image?: string;
+  /** Rendered width of the image card in px. Defaults to 420. */
+  imageWidth?: number;
+  /** Voice note audio (path under /public); renders a voice-note bubble. */
+  audio?: string;
+  /** Play the voice note as it lands. */
+  audioAutoPlay?: boolean;
+  /** The curtain is shut: stop any audio in this bubble. */
+  paused?: boolean;
+  /** Marks this bubble in the DOM so a focus beat can find it. */
+  domId?: string;
+  /** Text sitting to the left of the timestamp, e.g. a last-seen line. */
+  metaPrefix?: string;
+  /** The prefix reserves its space from the start and fades in when true. */
+  metaPrefixShown?: boolean;
   timestamp: string;
   senderName?: string;
   senderColor?: string;
@@ -29,6 +44,13 @@ export default function MessageBubble({
   sender,
   text,
   image,
+  imageWidth = 420,
+  audio,
+  audioAutoPlay = false,
+  paused = false,
+  domId,
+  metaPrefix,
+  metaPrefixShown = false,
   timestamp,
   senderName,
   senderColor,
@@ -37,10 +59,11 @@ export default function MessageBubble({
   status = "read",
 }: MessageBubbleProps) {
   const outgoing = sender === "me";
-  const emojiOnly = !isDeleted && !image && isEmojiOnly(text);
+  const emojiOnly = !isDeleted && !image && !audio && isEmojiOnly(text);
 
   return (
     <div
+      data-message-id={domId}
       className={`flex ${outgoing ? "justify-end" : "justify-start"}`}
       style={{ marginTop: isFirstInGroup ? 20 : 6 }}
     >
@@ -72,18 +95,28 @@ export default function MessageBubble({
             </div>
           ) : null}
 
-          {!isDeleted && image ? (
+          {!isDeleted && audio ? (
+            <VoiceNote
+              src={audio}
+              timestamp={timestamp}
+              outgoing={outgoing}
+              status={status}
+              autoPlay={audioAutoPlay}
+              paused={paused}
+              senderColor={outgoing ? undefined : senderColor}
+            />
+          ) : !isDeleted && image ? (
             <div className="relative pb-1">
               <Image
                 src={image}
                 alt=""
-                width={420}
-                height={420}
+                width={imageWidth}
+                height={imageWidth}
                 unoptimized
-                className="h-auto w-[420px] rounded-md object-cover"
+                className="h-auto rounded-md object-cover"
               />
               {text ? (
-                <div className="relative mt-2">
+                <div className="relative mt-2" style={{ width: imageWidth }}>
                   <span className="block whitespace-pre-wrap break-words text-[44px] font-bold leading-[58px] text-[#111b21]">
                     {text}
                     <Meta
@@ -91,6 +124,8 @@ export default function MessageBubble({
                       outgoing={outgoing}
                       status={status}
                       variant="reserve"
+                      prefix={metaPrefix}
+                      prefixShown={metaPrefixShown}
                     />
                   </span>
                   <Meta
@@ -98,6 +133,8 @@ export default function MessageBubble({
                     outgoing={outgoing}
                     status={status}
                     variant="pinned"
+                    prefix={metaPrefix}
+                    prefixShown={metaPrefixShown}
                   />
                 </div>
               ) : (
@@ -137,6 +174,8 @@ export default function MessageBubble({
                   outgoing={outgoing}
                   status={status}
                   variant="reserve"
+                  prefix={metaPrefix}
+                  prefixShown={metaPrefixShown}
                 />
               </span>
               <Meta
@@ -144,6 +183,8 @@ export default function MessageBubble({
                 outgoing={outgoing}
                 status={status}
                 variant="pinned"
+                prefix={metaPrefix}
+                prefixShown={metaPrefixShown}
               />
             </div>
           )}
@@ -168,11 +209,16 @@ function Meta({
   outgoing,
   status,
   variant,
+  prefix,
+  prefixShown = false,
 }: {
   timestamp: string;
   outgoing: boolean;
   status: MessageStatus;
   variant: "pinned" | "reserve" | "trailing";
+  /** Sits left of the timestamp; holds its space before it fades in. */
+  prefix?: string;
+  prefixShown?: boolean;
 }) {
   const placement = {
     pinned: "absolute bottom-0 right-0",
@@ -180,11 +226,27 @@ function Meta({
     trailing: "ml-4 inline-block h-[28px] translate-y-[6px] align-bottom",
   }[variant];
 
+  // Once the focus beat lands, the whole line breathes so the eye goes to it.
+  const breathing = variant === "pinned" && prefixShown && Boolean(prefix);
+
   return (
     <span
       aria-hidden={variant === "reserve"}
       className={`select-none whitespace-nowrap text-[24px] font-semibold leading-[28px] text-[#667781] ${placement}`}
+      style={
+        breathing
+          ? { animation: "wa-meta-breathe 2.6s ease-in-out infinite" }
+          : undefined
+      }
     >
+      {prefix ? (
+        <span
+          className="mr-4 transition-opacity duration-700 ease-out"
+          style={{ opacity: prefixShown ? 1 : 0 }}
+        >
+          {prefix}
+        </span>
+      ) : null}
       {timestamp}
       {outgoing ? <Ticks status={status} /> : null}
     </span>

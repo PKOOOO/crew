@@ -1,8 +1,12 @@
 "use client";
 
+import Image from "next/image";
+
 export type ChatListItemProps = {
   name: string;
   avatarColor: string;
+  /** Photo shown instead of initials — the group's picture. */
+  avatarImage?: string;
   lastMessage: string;
   time: string;
   unreadCount?: number;
@@ -14,6 +18,7 @@ export type ChatListItemProps = {
 export default function ChatListItem({
   name,
   avatarColor,
+  avatarImage,
   lastMessage,
   time,
   unreadCount,
@@ -31,7 +36,12 @@ export default function ChatListItem({
         active ? "bg-[#f0f2f5]" : "bg-transparent hover:bg-[#f5f6f6]"
       }`}
     >
-      <Avatar name={name} color={avatarColor} isGroup={isGroup} />
+      <Avatar
+        name={name}
+        color={avatarColor}
+        isGroup={isGroup}
+        image={avatarImage}
+      />
 
       <div className="flex min-w-0 flex-1 flex-col justify-center gap-0.5 border-b border-[#f0f2f5] py-3 pr-3">
         <div className="flex items-baseline gap-2">
@@ -70,10 +80,12 @@ function Avatar({
   name,
   color,
   isGroup,
+  image,
 }: {
   name: string;
   color: string;
   isGroup: boolean;
+  image?: string;
 }) {
   const initials = name
     .split(" ")
@@ -81,6 +93,19 @@ function Avatar({
     .slice(0, 2)
     .map((part) => part[0]?.toUpperCase() ?? "")
     .join("");
+
+  if (image) {
+    return (
+      <Image
+        src={image}
+        alt=""
+        width={49}
+        height={49}
+        unoptimized
+        className="h-[49px] w-[49px] shrink-0 rounded-full object-cover"
+      />
+    );
+  }
 
   return (
     <span

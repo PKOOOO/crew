@@ -2,8 +2,9 @@
 
 import { useMemo } from "react";
 import type { ChatEvent, ChatListItem } from "@/types/chat";
+import type { FocusBeat } from "@/types/scene";
 import ChatPanel from "@/components/ChatPanel";
-import { buildSenderColors } from "@/lib/sender-colors";
+import { buildSenderColors, GROUP_AVATAR } from "@/lib/sender-colors";
 
 export type WhatsAppScreenProps = {
   events: ChatEvent[];
@@ -16,6 +17,10 @@ export type WhatsAppScreenProps = {
   headerStatus?: string;
   /** Halt playback where it stands — the curtain is shut. */
   paused?: boolean;
+  /** Scales the message column — text and bubbles together. */
+  textScale?: number;
+  /** Push in on one message once the scene has settled. */
+  focus?: FocusBeat;
   autoStart?: boolean;
   /** Called once when the script has played to the end. */
   onFinished?: () => void;
@@ -33,6 +38,8 @@ export default function WhatsAppScreen({
   instant = false,
   headerStatus,
   paused = false,
+  textScale,
+  focus,
   autoStart = false,
   onFinished,
 }: WhatsAppScreenProps) {
@@ -56,6 +63,7 @@ export default function WhatsAppScreen({
       id: chatName,
       name: chatName,
       avatarColor: "#5f7f8c",
+      avatarImage: isGroup ? GROUP_AVATAR : undefined,
       lastMessage: "",
       time: "",
       isGroup,
@@ -76,6 +84,8 @@ export default function WhatsAppScreen({
         instant={instant}
         headerStatus={headerStatus}
         paused={paused}
+        textScale={textScale}
+        focus={focus}
         onFinished={onFinished}
       />
     </div>

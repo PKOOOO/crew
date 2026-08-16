@@ -1,10 +1,23 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type RefObject,
+} from "react";
 import type { ChatEvent, ChatListItem } from "@/types/chat";
+import type { FocusBeat } from "@/types/scene";
 import MessageBubble from "@/components/MessageBubble";
 import TypingIndicator from "@/components/TypingIndicator";
 import { resolveSenderColor } from "@/lib/sender-colors";
+import {
+  createKeyClick,
+  type KeyClick,
+  type KeyClickVariant,
+} from "@/lib/key-click";
 import {
   Avatar,
   EmojiIcon,
@@ -38,12 +51,61 @@ const SELF_SEND_PAUSE_MS = 500;
 
 /** Notification tone for incoming messages. */
 const TONE_SRC = "/whatsapp.mp3";
+/** Send-woosh for the phone owner's own outgoing messages. */
+const SENT_TONE_SRC = "/sent.mp3";
+
+/** Breath between a voice note finishing and the next message starting. */
+const VOICE_TAIL_MS = 700;
+/** Assumed length when a voice note's metadata never arrives. */
+const VOICE_FALLBACK_MS = 5000;
+
+/**
+ * How long a voice note runs, read from the file's own metadata so the script
+ * never has to hardcode a duration. Falls back to a fixed guess rather than
+ * hanging or returning zero — a show must not stall on a slow byte.
+ */
+function voiceLengthMs(src: string): Promise<number> {
+  return new Promise((resolve) => {
+    if (typeof window === "undefined") {
+      resolve(VOICE_FALLBACK_MS);
+      return;
+    }
+
+    const probe = new Audio(src);
+    probe.preload = "metadata";
+
+    let settled = false;
+    const finish = (ms: number) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(guard);
+      resolve(ms);
+    };
+    const guard = setTimeout(() => finish(VOICE_FALLBACK_MS), 4000);
+
+    probe.addEventListener(
+      "loadedmetadata",
+      () =>
+        finish(
+          Number.isFinite(probe.duration)
+            ? probe.duration * 1000
+            : VOICE_FALLBACK_MS,
+        ),
+      { once: true },
+    );
+    probe.addEventListener("error", () => finish(VOICE_FALLBACK_MS), {
+      once: true,
+    });
+  });
+}
 
 export type VisibleMessage = {
   id: string;
   sender: string;
   text: string;
   image?: string;
+  imageWidth?: number;
+  audio?: string;
   timestamp: string;
   isFirstInGroup: boolean;
   isDeleted: boolean;
@@ -73,6 +135,13 @@ export type ChatPanelProps = {
    * so the curtain closing stops a chat that is already running.
    */
   paused?: boolean;
+  /**
+   * Scales the message column — bubbles, text, padding and all — as one. 1 is
+   * the standard size.
+   */
+  textScale?: number;
+  /** Push in on one message once the scene has settled. */
+  focus?: FocusBeat;
   onMessage?: (message: VisibleMessage) => void;
   /** Called once when the script has played to the end. */
   onFinished?: () => void;
@@ -102,6 +171,8 @@ function settleScript(script: ChatEvent[]): VisibleMessage[] {
         sender: event.sender,
         text: event.text,
         image: event.image,
+        imageWidth: event.imageWidth,
+        audio: event.audio,
         timestamp: event.time ?? nowTime(),
         isFirstInGroup: !last || last.sender !== event.sender,
         isDeleted: false,
@@ -125,29 +196,56 @@ export default function ChatPanel({
   instant = false,
   headerStatus,
   paused = false,
+  textScale = 1,
+  focus,
   onMessage,
   onFinished,
 }: ChatPanelProps) {
   const [visibleMessages, setVisibleMessages] = useState<VisibleMessage[]>([]);
   const [currentlyTyping, setCurrentlyTyping] = useState<string | null>(null);
+  /** The indicator on screen is a held mic, not typing dots. */
+  const [typingIsVoice, setTypingIsVoice] = useState(false);
   /** What the phone's owner currently has typed in the input box. */
   const [draft, setDraft] = useState("");
   /** null = not started; a number identifies the current playback run. */
   const [runId, setRunId] = useState<number | null>(autoStart ? 1 : null);
   const [finished, setFinished] = useState(false);
   const bodyRef = useRef<HTMLDivElement>(null);
+  const columnRef = useRef<HTMLDivElement>(null);
   const onMessageRef = useRef(onMessage);
   const onFinishedRef = useRef(onFinished);
   const toneRef = useRef<HTMLAudioElement | null>(null);
+  const sentToneRef = useRef<HTMLAudioElement | null>(null);
+  const keyClickRef = useRef<KeyClick | null>(null);
 
-  /** Plays the incoming-message tone, restarting it if it's still playing. */
-  const playTone = () => {
+  /** Plays a tone from the given ref/src pair, restarting it if still playing. */
+  const playFrom = useCallback(
+    (ref: RefObject<HTMLAudioElement | null>, src: string) => {
+      if (typeof window === "undefined") return;
+      const tone = (ref.current ??= new Audio(src));
+      tone.currentTime = 0;
+      // Rejects when the browser blocks autoplay — nothing to do about it.
+      void tone.play().catch(() => {});
+    },
+    [],
+  );
+
+  /** Incoming-message tone. */
+  const playTone = useCallback(
+    () => playFrom(toneRef, TONE_SRC),
+    [playFrom],
+  );
+  /** Outgoing-message woosh, for the phone owner's own sent messages. */
+  const playSentTone = useCallback(
+    () => playFrom(sentToneRef, SENT_TONE_SRC),
+    [playFrom],
+  );
+
+  /** One keystroke, synthesized fresh so a fast run never sounds looped. */
+  const playKeyTick = useCallback((variant?: KeyClickVariant) => {
     if (typeof window === "undefined") return;
-    const tone = (toneRef.current ??= new Audio(TONE_SRC));
-    tone.currentTime = 0;
-    // Rejects when the browser blocks autoplay — nothing to do about it.
-    void tone.play().catch(() => {});
-  };
+    (keyClickRef.current ??= createKeyClick())(variant);
+  }, []);
 
   useEffect(() => {
     onMessageRef.current = onMessage;
@@ -169,15 +267,17 @@ export default function ChatPanel({
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
 
-    const wait = (ms: number) =>
+    // Scripted beats stretch with the global pace; real-time waits (a voice
+    // note actually playing) must not.
+    const wait = (ms: number, paced = true) =>
       new Promise<void>((resolve) => {
-        timer = setTimeout(resolve, ms * PLAYBACK_PACE);
+        timer = setTimeout(resolve, paced ? ms * PLAYBACK_PACE : ms);
       });
 
     const isSelf = (sender: string) =>
       sender === "me" || (!!selfName && sender === selfName);
 
-    /** Types text into the input box one character at a time. */
+    /** Types text into the input box one character at a time, key by key. */
     const typeDraft = async (text: string, perCharacter: number) => {
       let typed = "";
       for (const character of text) {
@@ -185,6 +285,7 @@ export default function ChatPanel({
         if (cancelled) return false;
         typed += character;
         setDraft(typed);
+        playKeyTick();
       }
       return true;
     };
@@ -205,6 +306,7 @@ export default function ChatPanel({
       // Every run starts from a clean slate at event index 0.
       setVisibleMessages([]);
       setCurrentlyTyping(null);
+      setTypingIsVoice(false);
       setDraft("");
       setFinished(false);
 
@@ -233,11 +335,13 @@ export default function ChatPanel({
             continue;
           }
 
-          // Bait: show the indicator, then clear it without a message landing.
+          // Typing dots, or a pulsing mic when they are holding to record.
           setCurrentlyTyping(event.sender);
+          setTypingIsVoice(event.voice === true);
           await wait(event.duration);
           if (cancelled) return;
           setCurrentlyTyping(null);
+          setTypingIsVoice(false);
           continue;
         }
 
@@ -254,7 +358,9 @@ export default function ChatPanel({
               if (cancelled) return;
             }
             setDraft("");
-          } else {
+          } else if (!event.audio) {
+            // A voice note has already had its own recording indicator — it
+            // doesn't get typing dots on top.
             setCurrentlyTyping(event.sender);
             await wait(PRE_MESSAGE_TYPING_MS);
             if (cancelled) return;
@@ -266,13 +372,19 @@ export default function ChatPanel({
             sender: event.sender,
             text: event.text,
             image: event.image,
+            imageWidth: event.imageWidth,
+            audio: event.audio,
             timestamp: event.time ?? nowTime(),
             // Computed once, at insert time, and never recomputed.
             isFirstInGroup: true,
             isDeleted: false,
           };
 
-          if (!isSelf(event.sender)) playTone();
+          // A voice note announces itself by playing — no tone over the top.
+          if (!event.audio) {
+            if (isSelf(event.sender)) playSentTone();
+            else playTone();
+          }
 
           setVisibleMessages((previous) => {
             const last = previous[previous.length - 1];
@@ -283,6 +395,15 @@ export default function ChatPanel({
             onMessageRef.current?.(landed);
             return [...previous, landed];
           });
+
+          // A voice note plays as it lands: hold the script until it has
+          // finished, so nobody starts typing over the top of it.
+          if (event.audio) {
+            const length = await voiceLengthMs(event.audio);
+            if (cancelled) return;
+            await wait(length + VOICE_TAIL_MS, false);
+            if (cancelled) return;
+          }
           continue;
         }
 
@@ -308,10 +429,20 @@ export default function ChatPanel({
     return () => {
       cancelled = true;
       if (timer) clearTimeout(timer);
-      // Stopping the chat stops its tone mid-ring too.
+      // Stopping the chat stops its tones mid-ring too.
       toneRef.current?.pause();
+      sentToneRef.current?.pause();
     };
-  }, [script, runId, selfName, instant, paused]);
+  }, [
+    script,
+    runId,
+    selfName,
+    instant,
+    paused,
+    playTone,
+    playSentTone,
+    playKeyTick,
+  ]);
 
   /* ------------------------------ flashback ------------------------------ */
   // Derived, not played: the settled conversation is what a flashback renders.
@@ -328,6 +459,49 @@ export default function ChatPanel({
     onFinishedRef.current?.();
   }, [flashback, runId]);
 
+  /* ------------------------------ focus beat ----------------------------- */
+  // The transform that fits one bubble to the screen. Null until measured.
+  const [focusTransform, setFocusTransform] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!focus || runId === null || paused) return;
+
+    const timer = setTimeout(() => {
+      const body = bodyRef.current;
+      const column = columnRef.current;
+      const row = column?.querySelector<HTMLElement>(
+        `[data-message-id="${focus.messageId}"]`,
+      );
+      if (!body || !column || !row) return;
+
+      // Measure the bubble, not the full-width row it is aligned within —
+      // the row spans the whole chat and would fit at barely any zoom.
+      const bubble = (row.firstElementChild as HTMLElement | null) ?? row;
+      const box = bubble.getBoundingClientRect();
+      const view = body.getBoundingClientRect();
+      const col = column.getBoundingClientRect();
+      if (!box.width || !box.height) return;
+
+      // Scale so the bubble just fits, then centre it: with origin at 0 0 a
+      // point p maps to col + t + scale * p, so solve t for the view centre.
+      const margin = focus.margin ?? 90;
+      const fit = Math.min(
+        (view.width - margin * 2) / box.width,
+        (view.height - margin * 2) / box.height,
+      );
+      const scale = Math.max(1, Math.min(fit, focus.maxScale ?? 3));
+
+      const centreX = box.left + box.width / 2 - col.left;
+      const centreY = box.top + box.height / 2 - col.top;
+      const x = view.left + view.width / 2 - col.left - scale * centreX;
+      const y = view.top + view.height / 2 - col.top - scale * centreY;
+
+      setFocusTransform(`translate(${x}px, ${y}px) scale(${scale})`);
+    }, focus.delay ?? 2500);
+
+    return () => clearTimeout(timer);
+  }, [focus, runId, paused]);
+
   /* ----------------------------- auto-scroll ----------------------------- */
   useEffect(() => {
     const body = bodyRef.current;
@@ -340,9 +514,11 @@ export default function ChatPanel({
   const started = runId !== null;
 
   const startPlayback = () => {
-    // Built on the click so the tone is preloaded and autoplay-unlocked.
+    // Built on the click so every tone is preloaded and autoplay-unlocked.
     toneRef.current ??= new Audio(TONE_SRC);
     toneRef.current.load();
+    sentToneRef.current ??= new Audio(SENT_TONE_SRC);
+    sentToneRef.current.load();
     setRunId((run) => (run ?? 0) + 1);
   };
 
@@ -357,13 +533,14 @@ export default function ChatPanel({
         <Avatar
           name={chat?.name ?? ""}
           color={chat?.avatarColor ?? "#7f9c93"}
+          image={chat?.avatarImage}
           size={70}
         />
         <div className="min-w-0 flex-1">
           <div className="truncate text-[36px] font-bold">{chat?.name}</div>
           {currentlyTyping ? (
             <div className="truncate text-[24px] font-semibold text-[#00a884]">
-              typing…
+              {typingIsVoice ? "recording audio…" : "typing…"}
             </div>
           ) : headerStatus ? (
             <div className="truncate text-[24px] font-medium text-[#667781]">
@@ -420,13 +597,34 @@ export default function ChatPanel({
           </div>
         ) : null}
 
-        <div className="flex flex-col">
+        {/* One zoom on the column scales bubbles, text and padding together,
+            and keeps the 72% max-width proportional. The transform on top of
+            it is the focus beat pushing in on a single message. */}
+        <div
+          ref={columnRef}
+          className="flex flex-col transition-transform duration-[2200ms] ease-in-out"
+          style={{
+            ...(textScale === 1 ? {} : { zoom: textScale }),
+            transformOrigin: "0 0",
+            transform: focusTransform ?? "translate(0px, 0px) scale(1)",
+          }}
+        >
           {shownMessages.map((message) => (
             <MessageBubble
               key={message.id}
               sender={isSelfSender(message.sender) ? "me" : message.sender}
               text={message.text}
               image={message.image}
+              imageWidth={message.imageWidth}
+              audio={message.audio}
+              // A flashback's notes are already old news — they don't replay.
+              audioAutoPlay={!instant}
+              paused={paused}
+              domId={message.id}
+              metaPrefix={
+                focus?.messageId === message.id ? focus.label : undefined
+              }
+              metaPrefixShown={focusTransform !== null}
               timestamp={message.timestamp}
               isDeleted={message.isDeleted}
               isFirstInGroup={message.isFirstInGroup}
@@ -445,6 +643,7 @@ export default function ChatPanel({
               isFirstInGroup={typingIsFirstInGroup}
               senderName={chat?.isGroup ? currentlyTyping : undefined}
               senderColor={resolveSenderColor(currentlyTyping, senderColors)}
+              voice={typingIsVoice}
             />
           ) : null}
         </div>
@@ -469,7 +668,14 @@ export default function ChatPanel({
               />
             </span>
           ) : (
-            <span className="text-[36px] text-[#8696a0]">Type a message</span>
+            <span className="flex items-center">
+              <span
+                aria-hidden
+                className="mr-[3px] inline-block h-[38px] w-[4px] shrink-0 bg-[#00a884]"
+                style={{ animation: "wa-caret-blink 1.1s step-end infinite" }}
+              />
+              <span className="text-[36px] text-[#8696a0]">Type a message</span>
+            </span>
           )}
         </div>
         <IconButton label={draft ? "Send" : "Voice message"}>

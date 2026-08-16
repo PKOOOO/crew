@@ -18,6 +18,12 @@ export const SENDER_COLOR_PALETTE: readonly string[] = [
   "#00a0b1", // cyan
 ];
 
+/**
+ * The group's photo, used wherever THE CREW's avatar appears — the chat
+ * header, the chat list, the pinned row.
+ */
+export const GROUP_AVATAR = "/scene1.jpeg";
+
 /** Stable per-name hash so a sender keeps the same color across renders. */
 function hashName(name: string): number {
   let hash = 0;

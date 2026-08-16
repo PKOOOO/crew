@@ -18,7 +18,7 @@ import type {
  *   6  Maya types, never sends                    convo5
  *   7  THE CREW interrupts — "You're famous"      convo6
  *   8  the pivotal night chat                     convo7
- *   9  Mwangi / Dad / Mom — never opened          convo8
+ *   9  Ms. Mwangi / Dad / Mom — never opened       convo8
  *   10 the final vibrate — "READ 11:43 PM"        convo8
  *   11 aftermath — RIP Maya                       convo9
  *   12 the chat sits in dead silence (flashback)   convo10
@@ -32,7 +32,9 @@ const scene1Whatsapp: ChatEvent[] = [
     type: "message",
     id: "s1-1",
     sender: "Tash",
-    text: "📸 BEST CLASS EVER!! ❤️❤️❤️❤️❤️",
+    text: "BEST CLASS EVER!❤️❤️❤️",
+    image: "/scene1.jpeg",
+    imageWidth: 560,
     time: "1:03 PM",
     delay: 2400,
   },
@@ -75,7 +77,7 @@ const scene1Whatsapp: ChatEvent[] = [
     sender: "Maya",
     text: "😊",
     time: "1:05 PM",
-    delay: 7000,
+    delay: 4000,
   },
 ];
 
@@ -106,7 +108,8 @@ const scene2Whatsapp: ChatEvent[] = [
     delay: 2200,
   },
 
-  // Hundreds of memes. Voice notes. Laughing emojis.
+  // Hundreds of memes. Voice notes. Laughing emojis. Each voice note plays
+  // out in full before the next person starts — sticker, voice, sticker.
   {
     type: "message",
     id: "s2-m1",
@@ -116,13 +119,23 @@ const scene2Whatsapp: ChatEvent[] = [
     time: "8:04 PM",
     delay: 1600,
   },
+  { type: "typing", sender: "Brian", duration: 2000, voice: true },
+  {
+    type: "message",
+    id: "s2-v1",
+    sender: "Brian",
+    text: "",
+    audio: "/Brian.mp3",
+    time: "8:04 PM",
+    delay: 400,
+  },
   {
     type: "message",
     id: "s2-m2",
     sender: "Kevin",
     text: "",
     image: "/m2.webp",
-    time: "8:04 PM",
+    time: "8:05 PM",
     delay: 1300,
   },
   {
@@ -139,8 +152,19 @@ const scene2Whatsapp: ChatEvent[] = [
     sender: "Aisha",
     text: "",
     image: "/m3.webp",
-    time: "8:05 PM",
+    time: "8:06 PM",
     delay: 1300,
+  },
+  // Aisha holds the mic — three seconds of pulsing — then it lands and plays.
+  { type: "typing", sender: "Aisha", duration: 2000, voice: true },
+  {
+    type: "message",
+    id: "s2-6",
+    sender: "Aisha",
+    text: "",
+    audio: "/Aisha.ogg",
+    time: "8:06 PM",
+    delay: 400,
   },
   {
     type: "message",
@@ -148,7 +172,7 @@ const scene2Whatsapp: ChatEvent[] = [
     sender: "Jay",
     text: "",
     image: "/m4.gif",
-    time: "8:06 PM",
+    time: "8:07 PM",
     delay: 1200,
   },
   {
@@ -156,8 +180,18 @@ const scene2Whatsapp: ChatEvent[] = [
     id: "s2-5",
     sender: "Kevin",
     text: "🔥🔥🔥🔥🔥",
-    time: "8:06 PM",
+    time: "8:07 PM",
     delay: 1200,
+  },
+  { type: "typing", sender: "Leo", duration: 2000, voice: true },
+  {
+    type: "message",
+    id: "s2-v2",
+    sender: "Leo",
+    text: "",
+    audio: "/Leo.mp3",
+    time: "8:08 PM",
+    delay: 400,
   },
   {
     type: "message",
@@ -165,16 +199,8 @@ const scene2Whatsapp: ChatEvent[] = [
     sender: "Tash",
     text: "",
     image: "/m5.webp",
-    time: "8:07 PM",
+    time: "8:08 PM",
     delay: 1300,
-  },
-  {
-    type: "message",
-    id: "s2-6",
-    sender: "Aisha",
-    text: "🎤 Voice note (0:14)",
-    time: "8:07 PM",
-    delay: 1400,
   },
   {
     type: "message",
@@ -182,8 +208,18 @@ const scene2Whatsapp: ChatEvent[] = [
     sender: "Kevin",
     text: "",
     image: "/m6.webp",
-    time: "8:08 PM",
+    time: "8:09 PM",
     delay: 1300,
+  },
+  { type: "typing", sender: "Nia", duration: 2000, voice: true },
+  {
+    type: "message",
+    id: "s2-v3",
+    sender: "Nia",
+    text: "",
+    audio: "/Nia.mp3",
+    time: "8:09 PM",
+    delay: 400,
   },
   {
     type: "message",
@@ -191,7 +227,7 @@ const scene2Whatsapp: ChatEvent[] = [
     sender: "Aisha",
     text: "",
     image: "/m7.gif",
-    time: "8:08 PM",
+    time: "8:10 PM",
     delay: 1200,
   },
   {
@@ -200,7 +236,7 @@ const scene2Whatsapp: ChatEvent[] = [
     sender: "Jay",
     text: "",
     image: "/m8.gif",
-    time: "8:09 PM",
+    time: "8:10 PM",
     delay: 1200,
   },
   {
@@ -208,7 +244,7 @@ const scene2Whatsapp: ChatEvent[] = [
     id: "s2-7",
     sender: "Tash",
     text: "😂😂😂😂😂😂",
-    time: "8:09 PM",
+    time: "8:11 PM",
     delay: 1200,
   },
 ];
@@ -228,14 +264,12 @@ const scene3Lockscreen: LockscreenEvent[] = [
     type: "status",
     targetNotificationId: "act1",
     status: "read",
-    label: "READ 11:43 PM",
     delay: 2500,
   },
 ];
 
 /* 4 — She nails the take. Uploads it. Within seconds: 100… 300… 800 likes. */
 const scene4Tiktok: TikTokEvent[] = [
-  { type: "caption", text: "when the teacher says pop quiz 😭😭" },
   { type: "likes", target: 100, duration: 2000 },
   {
     type: "comment",
@@ -442,20 +476,19 @@ const scene8Whatsapp: ChatEvent[] = [
 const scene9ChatList: ChatListEvent[] = [
   {
     type: "chat",
-    name: "Mr. Mwangi",
+    name: "Ms. Mwangi",
     preview: "Remember my door is always open.",
     time: "11:38 PM",
     ticks: "delivered",
     highlight: true,
     delay: 1600,
   },
+  // Dad rings for seven seconds. Nobody picks up.
   {
-    type: "chat",
+    type: "call",
     name: "Dad",
-    preview: "Missed voice call",
     time: "11:40 PM",
-    kind: "missed-call",
-    highlight: true,
+    duration: 7000,
     delay: 2400,
   },
   {
@@ -484,7 +517,6 @@ const scene10Lockscreen: LockscreenEvent[] = [
     type: "status",
     targetNotificationId: "final",
     status: "read",
-    label: "READ 11:43 PM",
     delay: 3000,
   },
 ];
@@ -559,7 +591,7 @@ const scene12Whatsapp: ChatEvent[] = [
 const scene13Notes: NotesEvent[] = [
   {
     type: "drafts",
-    duration: 24000,
+    duration: 56000,
     items: [
       "I keep smiling so nobody asks.",
       "Everyone thinks I'm the fun one.",
@@ -612,6 +644,7 @@ export const scenesSample: Scene[] = [
     appType: "tiktok",
     label: "4 · TikTok — 100… 300… 800 likes",
     username: "maya.k",
+    video: "/maya.mp4",
     events: scene4Tiktok,
   },
   {
@@ -639,6 +672,7 @@ export const scenesSample: Scene[] = [
     appType: "whatsapp",
     label: "7 · THE CREW — You're famous MAYA!",
     chatName: "THE CREW 🔥",
+    textScale: 1.3,
     events: scene7Whatsapp,
   },
   {
@@ -653,7 +687,12 @@ export const scenesSample: Scene[] = [
     id: "scene-9",
     statusTime: "23:41",
     appType: "chatlist",
-    label: "9 · Mwangi, Dad, Mom — delivered, never opened",
+    label: "9 · Ms. Mwangi, Dad, Mom — delivered, never opened",
+    pinned: {
+      name: "THE CREW 🔥",
+      preview: "Tash: 😂😂😂😂😂😂",
+      time: "8:11 PM",
+    },
     events: scene9ChatList,
   },
   {
@@ -679,7 +718,13 @@ export const scenesSample: Scene[] = [
     label: "12 · The chat sits in dead silence (flashback)",
     chatName: "THE CREW 🔥",
     instant: true,
-    headerStatus: "Maya · last seen yesterday at 11:43 PM",
+    // The room reads the whole chat, then the view closes in on the one
+    // message that mattered and names when she was last seen.
+    focus: {
+      messageId: "s12-1",
+      label: "Last seen yesterday",
+      delay: 3000,
+    },
     events: scene12Whatsapp,
   },
   {

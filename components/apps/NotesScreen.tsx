@@ -14,6 +14,7 @@ import {
   SquarePen,
 } from "lucide-react";
 import type { NoteListItem, NotesEvent } from "@/types/scene";
+import { createKeyClick, type KeyClick } from "@/lib/key-click";
 
 export type NotesScreenProps = {
   events: NotesEvent[];
@@ -33,49 +34,6 @@ export type NotesScreenProps = {
 /** Accent yellow used for note headings, matching the iOS Notes accent. */
 const ACCENT = "#ffc400";
 
-/**
- * Short synthesized keyboard click (Web Audio) — a filtered noise burst, so
- * rapid per-character clicks can overlap without an audio file or element pool.
- */
-function makeClicker() {
-  let context: AudioContext | null = null;
-  let noiseBuffer: AudioBuffer | null = null;
-
-  return (soft = false) => {
-    try {
-      context ??= new AudioContext();
-      if (context.state === "suspended") void context.resume();
-
-      if (!noiseBuffer) {
-        const length = Math.floor(context.sampleRate * 0.03);
-        noiseBuffer = context.createBuffer(1, length, context.sampleRate);
-        const data = noiseBuffer.getChannelData(0);
-        for (let i = 0; i < length; i += 1) {
-          data[i] = (Math.random() * 2 - 1) * (1 - i / length);
-        }
-      }
-
-      const source = context.createBufferSource();
-      source.buffer = noiseBuffer;
-      // Small random detune so a run of clicks doesn't sound machine-perfect.
-      source.playbackRate.value = 0.85 + Math.random() * 0.4;
-
-      const filter = context.createBiquadFilter();
-      filter.type = "bandpass";
-      filter.frequency.value = soft ? 1800 : 2600;
-      filter.Q.value = 1.2;
-
-      const gain = context.createGain();
-      gain.gain.value = soft ? 0.12 : 0.22;
-
-      source.connect(filter).connect(gain).connect(context.destination);
-      source.start();
-    } catch {
-      // No audio available — typing continues silently.
-    }
-  };
-}
-
 export default function NotesScreen({
   events,
   dark: darkInitial = false,
@@ -94,10 +52,12 @@ export default function NotesScreen({
   );
   const [openTitle, setOpenTitle] = useState<string | undefined>(noteTitle);
   const [openDate, setOpenDate] = useState<string | undefined>(noteDate);
+  /** Blank space above the drafts so they start below the screen edge. */
+  const [leadIn, setLeadIn] = useState(0);
   const listRef = useRef<HTMLDivElement>(null);
   const [dark, setDark] = useState(darkInitial);
   const onFinishedRef = useRef(onFinished);
-  const clickRef = useRef<ReturnType<typeof makeClicker> | null>(null);
+  const clickRef = useRef<KeyClick | null>(null);
 
   useEffect(() => {
     onFinishedRef.current = onFinished;
@@ -121,6 +81,7 @@ export default function NotesScreen({
       let current = "";
       setText(current);
       setEntries([]);
+      setLeadIn(0);
       setView(events[0]?.type === "list" ? "list" : "note");
       setOpenTitle(noteTitle);
       setOpenDate(noteDate);
@@ -147,7 +108,7 @@ export default function NotesScreen({
             if (cancelled) return;
             current += character;
             setText(current);
-            if (character !== " ") (clickRef.current ??= makeClicker())();
+            (clickRef.current ??= createKeyClick())();
           }
           continue;
         }
@@ -158,10 +119,17 @@ export default function NotesScreen({
         }
 
         if (event.type === "drafts") {
-          // Hundreds of unsent drafts rush past, then slow to the last one.
+          // Hundreds of unsent drafts climb up from below the screen.
           setEntries(event.items);
           setText("");
           await wait(80);
+          if (cancelled) return;
+
+          // A screen's worth of blank space above the first line, so the
+          // list starts entirely below the fold and rises into view.
+          const listBox = listRef.current;
+          if (listBox) setLeadIn(listBox.clientHeight);
+          await wait(60);
           if (cancelled) return;
 
           await new Promise<void>((resolve) => {
@@ -170,17 +138,25 @@ export default function NotesScreen({
               resolve();
               return;
             }
-            const distance = list.scrollHeight - list.clientHeight;
             const startedAt = performance.now();
             const step = (now: number) => {
               if (cancelled) {
                 resolve();
                 return;
               }
+              // Re-measured every frame, not captured up front: web fonts and
+              // image layout can still be settling when the scroll starts, and
+              // a distance measured too early stops short of the last line.
+              const distance = list.scrollHeight - list.clientHeight;
               const progress = Math.min(1, (now - startedAt) / event.duration);
-              // Ease-out quad: drifts up, still lingering at the end, but
-              // gentle enough that every line stays readable on the way past.
-              const eased = 1 - Math.pow(1 - progress, 2);
+              // Constant speed. Any ease-out spends its first seconds moving
+              // fastest, which is exactly when the room is starting to read —
+              // every line has to pass at the same pace to be readable, with
+              // just a short glide out of rest at the very top.
+              const eased =
+                progress < 0.06
+                  ? (progress * progress) / 0.12
+                  : progress - 0.03;
               list.scrollTop = distance * eased;
               if (progress < 1) requestAnimationFrame(step);
               else resolve();
@@ -202,7 +178,7 @@ export default function NotesScreen({
           if (cancelled) return;
           current = current.slice(0, -1);
           setText(current);
-          (clickRef.current ??= makeClicker())(true);
+          (clickRef.current ??= createKeyClick())("soft");
         }
       }
 
@@ -279,16 +255,22 @@ export default function NotesScreen({
 
           {entries.length ? (
             <div ref={listRef} className="min-h-0 flex-1 overflow-hidden pt-6">
-              <ul className="flex flex-col gap-10 pb-6">
+              {/* Lead-in holds the lines below the fold until the scroll
+                  lifts them. Deep bottom padding so a 104px descender has
+                  room and the last line ends clear of the edge. */}
+              <ul
+                className="flex flex-col gap-14 pb-24"
+                style={{ paddingTop: leadIn }}
+              >
                 {entries.map((entry, index) => {
                   const isLast = index === entries.length - 1;
                   return (
                     <li
                       key={index}
-                      className={`break-words ${
+                      className={`break-words pb-2 ${
                         isLast
-                          ? "text-[76px] font-bold leading-tight"
-                          : "text-[56px] font-semibold leading-tight opacity-70"
+                          ? "text-[104px] font-bold leading-[1.3]"
+                          : "text-[78px] font-semibold leading-[1.3] opacity-75"
                       }`}
                       style={isLast ? { color: ACCENT } : undefined}
                     >

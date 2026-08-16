@@ -7,6 +7,13 @@ export type ChatEvent =
       delay: number;
       /** Optional image attachment (path under /public), e.g. "/meme.png". */
       image?: string;
+      /** Rendered width of the image card in px. Defaults to 420. */
+      imageWidth?: number;
+      /**
+       * Voice note audio (path under /public), e.g. "/Aisha.ogg". Renders a
+       * voice-note bubble instead of text, and plays as it lands.
+       */
+      audio?: string;
       /** Overrides the live clock, e.g. "11:43 PM". */
       time?: string;
     }
@@ -21,6 +28,11 @@ export type ChatEvent =
       draft?: string;
       /** Leave the draft sitting in the input instead of erasing it. */
       keepDraft?: boolean;
+      /**
+       * Holding the mic rather than typing — the bubble shows a pulsing mic
+       * and the header reads "recording audio…".
+       */
+      voice?: boolean;
     }
   | {
       type: "delete";
@@ -40,6 +52,8 @@ export type ChatListItem = {
   id: string;
   name: string;
   avatarColor: string;
+  /** Photo shown instead of initials — groups use the class picture. */
+  avatarImage?: string;
   lastMessage: string;
   time: string;
   unreadCount?: number;
