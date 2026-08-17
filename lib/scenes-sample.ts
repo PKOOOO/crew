@@ -11,18 +11,17 @@ import type {
 /*
  * Scene order follows the printed script, convo1 → convo11:
  *   1  THE CREW — BEST CLASS EVER                  convo1
- *   2  THE CREW — party planning + memes          convo2
- *   3  Act One close — "READ 11:43 PM"            convo3
- *   4  the funny TikTok — likes flood in          convo4
- *   5  the secret account (Notes)                 convo4
- *   6  Maya types, never sends                    convo5
- *   7  THE CREW interrupts — "You're famous"      convo6
- *   8  the pivotal night chat                     convo7
- *   9  Ms. Mwangi / Dad / Mom — never opened       convo8
- *   10 the final vibrate — "READ 11:43 PM"        convo8
- *   11 aftermath — RIP Maya                       convo9
- *   12 the chat sits in dead silence (flashback)   convo10
- *   13 the unsent drafts                          convo11
+ *   2  THE CREW — party planning + memes           convo2
+ *   3  the funny TikTok — likes flood in           convo4
+ *   4  the secret account (Notes)                  convo4
+ *   5  Maya types, never sends                     convo5
+ *   6  THE CREW interrupts — "You're famous"       convo6
+ *   7  the pivotal night chat                      convo7
+ *   8  Ms. Mwangi / Dad / Mom — never opened       convo8
+ *   9  the final vibrate — "READ 11:43 PM"         convo8
+ *   10 aftermath — RIP Maya                        convo9
+ *   11 the chat sits in dead silence (flashback)   convo10
+ *   12 the unsent drafts                           convo11
  */
 
 /* 1 — The group lights up about the school day. Everyone has something to
@@ -249,27 +248,8 @@ const scene2Whatsapp: ChatEvent[] = [
   },
 ];
 
-/* 3 — Act One close: the notification that flashes before the blackout. */
-const scene3Lockscreen: LockscreenEvent[] = [
-  {
-    type: "notification",
-    id: "act1",
-    app: "message",
-    from: "THE CREW 🔥",
-    preview: "Guys... Can I tell you something?",
-    icon: "/apple.png",
-    delay: 2500,
-  },
-  {
-    type: "status",
-    targetNotificationId: "act1",
-    status: "read",
-    delay: 2500,
-  },
-];
-
-/* 4 — She nails the take. Uploads it. Within seconds: 100… 300… 800 likes. */
-const scene4Tiktok: TikTokEvent[] = [
+/* 3 — She nails the take. Uploads it. Within seconds: 100… 300… 800 likes. */
+const scene3Tiktok: TikTokEvent[] = [
   { type: "likes", target: 100, duration: 2000 },
   {
     type: "comment",
@@ -288,7 +268,7 @@ const scene4Tiktok: TikTokEvent[] = [
   { type: "comment", author: "kevin_m", text: "Queen!", delay: 1600 },
 ];
 
-/* 5 — A secret account. No profile picture. No followers. This is where
+/* 4 — A secret account. No profile picture. No followers. This is where
  * she writes. The index opens first, then the one note nobody has read. */
 const mayaNotes: NoteListItem[] = [
   {
@@ -317,7 +297,7 @@ const mayaNotes: NoteListItem[] = [
   },
 ];
 
-const scene5Notes: NotesEvent[] = [
+const scene4Notes: NotesEvent[] = [
   { type: "list", duration: 3200 },
   { type: "open", title: "private", date: "19 July 2026 at 23:31" },
   {
@@ -335,9 +315,9 @@ const scene5Notes: NotesEvent[] = [
   { type: "delete", duration: 1000 },
 ];
 
-/* 6 — She opens the group chat and types it. Before she can send, the
+/* 5 — She opens the group chat and types it. Before she can send, the
  * others burst into the room. The draft just sits there. */
-const scene6Whatsapp: ChatEvent[] = [
+const scene5Whatsapp: ChatEvent[] = [
   {
     type: "typing",
     sender: "Maya",
@@ -347,8 +327,8 @@ const scene6Whatsapp: ChatEvent[] = [
   },
 ];
 
-/* 7 — Her phone lights up. THE CREW. */
-const scene7Whatsapp: ChatEvent[] = [
+/* 6 — Her phone lights up. THE CREW. */
+const scene6Whatsapp: ChatEvent[] = [
   {
     type: "message",
     id: "s7-1",
@@ -375,8 +355,8 @@ const scene7Whatsapp: ChatEvent[] = [
   },
 ];
 
-/* 8 — The pivotal night chat, 11:31 PM → 11:43 PM. */
-const scene8Whatsapp: ChatEvent[] = [
+/* 7 — The pivotal night chat, 11:31 PM → 11:43 PM. */
+const scene7Whatsapp: ChatEvent[] = [
   {
     type: "message",
     id: "s8-1",
@@ -468,12 +448,21 @@ const scene8Whatsapp: ChatEvent[] = [
     delay: 1200,
   },
 
-  // Leo is online. He types... Stops. Deletes.
-  { type: "typing", sender: "Leo", duration: 4000 },
+  // Leo is online. He types... he even sends it... then takes it back.
+  { type: "typing", sender: "Leo", duration: 2500 },
+  {
+    type: "message",
+    id: "s8-10",
+    sender: "Leo",
+    text: "Maya you good?",
+    time: "11:44 PM",
+    delay: 800,
+  },
+  { type: "delete", targetId: "s8-10", delay: 1800 },
 ];
 
-/* 9 — Delivered. Never opened. */
-const scene9ChatList: ChatListEvent[] = [
+/* 8 — Delivered. Never opened. */
+const scene8ChatList: ChatListEvent[] = [
   {
     type: "chat",
     name: "Ms. Mwangi",
@@ -502,8 +491,8 @@ const scene9ChatList: ChatListEvent[] = [
   },
 ];
 
-/* 10 — Then... her phone vibrates one final time. */
-const scene10Lockscreen: LockscreenEvent[] = [
+/* 9 — Then... her phone vibrates one final time. */
+const scene9Lockscreen: LockscreenEvent[] = [
   {
     type: "notification",
     id: "final",
@@ -521,8 +510,8 @@ const scene10Lockscreen: LockscreenEvent[] = [
   },
 ];
 
-/* 11 — Phones come out. Some cry. Some record. Some post. */
-const scene11Tiktok: TikTokEvent[] = [
+/* 10 — Phones come out. Some cry. Some record. Some post. */
+const scene10Tiktok: TikTokEvent[] = [
   { type: "caption", text: "RIP Maya 💔" },
   { type: "caption", text: "Gone too soon." },
   { type: "caption", text: "Check on your friends." },
@@ -547,8 +536,8 @@ const scene11Tiktok: TikTokEvent[] = [
   { type: "likes", target: 12400, duration: 6000 },
 ];
 
-/* 12 — The chat sits in dead silence. */
-const scene12Whatsapp: ChatEvent[] = [
+/* 11 — The chat sits in dead silence. */
+const scene11Whatsapp: ChatEvent[] = [
   {
     type: "message",
     id: "s12-1",
@@ -586,9 +575,9 @@ const scene12Whatsapp: ChatEvent[] = [
 ];
 
 
-/* 13 — Hundreds of desperate, unsent drafts scroll rapidly up the screen,
+/* 12 — Hundreds of desperate, unsent drafts scroll rapidly up the screen,
  * slowing to linger on the very last entry. */
-const scene13Notes: NotesEvent[] = [
+const scene12Notes: NotesEvent[] = [
   {
     type: "drafts",
     duration: 56000,
@@ -632,90 +621,82 @@ export const scenesSample: Scene[] = [
   },
   {
     id: "scene-3",
-    statusTime: "23:43",
-    statusDate: "Sun 19",
-    appType: "lockscreen",
-    label: "3 · Act One close — READ 11:43 PM",
-    events: scene3Lockscreen,
+    statusTime: "21:15",
+    appType: "tiktok",
+    label: "3 · TikTok — 100… 300… 800 likes",
+    username: "maya.k",
+    video: "/maya.mp4",
+    events: scene3Tiktok,
   },
   {
     id: "scene-4",
-    statusTime: "21:15",
-    appType: "tiktok",
-    label: "4 · TikTok — 100… 300… 800 likes",
-    username: "maya.k",
-    video: "/maya.mp4",
-    events: scene4Tiktok,
-  },
-  {
-    id: "scene-5",
     statusTime: "23:31",
     appType: "notes",
-    label: "5 · Notes — the secret account",
+    label: "4 · Notes — the secret account",
     dark: true,
     notes: mayaNotes,
     noteTitle: "private",
     noteDate: "19 July 2026 at 23:31",
-    events: scene5Notes,
+    events: scene4Notes,
+  },
+  {
+    id: "scene-5",
+    statusTime: "23:35",
+    appType: "whatsapp",
+    label: "5 · Maya types it, never sends",
+    chatName: "THE CREW 🔥",
+    events: scene5Whatsapp,
   },
   {
     id: "scene-6",
-    statusTime: "23:35",
+    statusTime: "13:12",
     appType: "whatsapp",
-    label: "6 · Maya types it, never sends",
+    label: "6 · THE CREW — You're famous MAYA!",
     chatName: "THE CREW 🔥",
+    textScale: 1.3,
     events: scene6Whatsapp,
   },
   {
     id: "scene-7",
-    statusTime: "13:12",
+    statusTime: "23:31",
     appType: "whatsapp",
-    label: "7 · THE CREW — You're famous MAYA!",
+    label: "7 · The pivotal night chat (11:31 → 11:43 PM)",
     chatName: "THE CREW 🔥",
-    textScale: 1.3,
     events: scene7Whatsapp,
   },
   {
     id: "scene-8",
-    statusTime: "23:31",
-    appType: "whatsapp",
-    label: "8 · The pivotal night chat (11:31 → 11:43 PM)",
-    chatName: "THE CREW 🔥",
-    events: scene8Whatsapp,
-  },
-  {
-    id: "scene-9",
     statusTime: "23:41",
     appType: "chatlist",
-    label: "9 · Ms. Mwangi, Dad, Mom — delivered, never opened",
+    label: "8 · Ms. Mwangi, Dad, Mom — delivered, never opened",
     pinned: {
       name: "THE CREW 🔥",
       preview: "Tash: 😂😂😂😂😂😂",
       time: "8:11 PM",
     },
-    events: scene9ChatList,
+    events: scene8ChatList,
   },
   {
-    id: "scene-10",
+    id: "scene-9",
     statusTime: "23:43",
     statusDate: "Sun 19",
     appType: "lockscreen",
-    label: "10 · One final vibrate — READ 11:43 PM",
-    events: scene10Lockscreen,
+    label: "9 · One final vibrate — READ 11:43 PM",
+    events: scene9Lockscreen,
+  },
+  {
+    id: "scene-10",
+    statusTime: "16:20",
+    appType: "tiktok",
+    label: "10 · Aftermath — RIP Maya 💔",
+    username: "school.memories",
+    events: scene10Tiktok,
   },
   {
     id: "scene-11",
-    statusTime: "16:20",
-    appType: "tiktok",
-    label: "11 · Aftermath — RIP Maya 💔",
-    username: "school.memories",
-    events: scene11Tiktok,
-  },
-  {
-    id: "scene-12",
     statusTime: "23:44",
     appType: "whatsapp",
-    label: "12 · The chat sits in dead silence (flashback)",
+    label: "11 · The chat sits in dead silence (flashback)",
     chatName: "THE CREW 🔥",
     instant: true,
     // The room reads the whole chat, then the view closes in on the one
@@ -725,17 +706,17 @@ export const scenesSample: Scene[] = [
       label: "Last seen yesterday",
       delay: 3000,
     },
-    events: scene12Whatsapp,
+    events: scene11Whatsapp,
   },
   {
-    id: "scene-13",
+    id: "scene-12",
     statusTime: "23:43",
     appType: "notes",
-    label: "13 · Notes — the unsent drafts",
+    label: "12 · Notes — the unsent drafts",
     dark: true,
     notes: mayaNotes,
     noteTitle: "drafts",
     noteDate: "19 July 2026 at 23:43",
-    events: scene13Notes,
+    events: scene12Notes,
   },
 ];

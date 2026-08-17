@@ -145,8 +145,8 @@ export default function MessageBubble({
               )}
             </div>
           ) : isDeleted ? (
-            <span className="inline-flex items-center gap-3 text-[36px] font-bold italic text-[#8696a0]">
-              <Ban className="h-9 w-9 shrink-0" strokeWidth={2} />
+            <span className="inline-flex items-center gap-4 text-[40px] font-medium italic text-[#8696a0]">
+              <Ban className="h-11 w-11 shrink-0" strokeWidth={2} />
               This message was deleted
               <Meta
                 timestamp={timestamp}
