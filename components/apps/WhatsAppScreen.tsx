@@ -74,7 +74,7 @@ export default function WhatsAppScreen({
   const senderColors = useMemo(() => buildSenderColors(senders), [senders]);
 
   return (
-    <div className="flex h-full min-h-0 w-full text-[#111b21]">
+    <div className="flex h-full min-h-0 w-full overflow-hidden text-[#111b21]">
       <ChatPanel
         chat={chat}
         script={events}

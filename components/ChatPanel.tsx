@@ -261,6 +261,9 @@ export default function ChatPanel({
   const [finished, setFinished] = useState(false);
   const bodyRef = useRef<HTMLDivElement>(null);
   const columnRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLElement>(null);
+  const inputBarRef = useRef<HTMLDivElement>(null);
+  const inputFieldRef = useRef<HTMLDivElement>(null);
   const onMessageRef = useRef(onMessage);
   const onFinishedRef = useRef(onFinished);
   const toneRef = useRef<HTMLAudioElement | null>(null);
@@ -530,6 +533,8 @@ export default function ChatPanel({
   /* ------------------------------ focus beat ----------------------------- */
   // The transform that fits one bubble to the screen. Null until measured.
   const [focusTransform, setFocusTransform] = useState<string | null>(null);
+  /** The composer beat pushes the whole panel in, not just the column. */
+  const [panelTransform, setPanelTransform] = useState<string | null>(null);
 
   // Read-through: crawl the conversation from the top at a constant rate, so
   // the room gets to every message before the view closes in on one of them.
@@ -559,6 +564,34 @@ export default function ChatPanel({
     if (!focus || runId === null || paused) return;
 
     const timer = setTimeout(() => {
+      // No message named: push in on the box she is typing into. The whole
+      // panel moves, so it reads as a camera closing on the phone rather
+      // than one element growing.
+      if (!focus.messageId) {
+        const panel = panelRef.current;
+        const bar = inputBarRef.current;
+        const field = inputFieldRef.current;
+        if (!panel || !bar || !field) return;
+
+        const view = panel.getBoundingClientRect();
+        const barBox = bar.getBoundingClientRect();
+        const fieldBox = field.getBoundingClientRect();
+
+        // Anchor on where the text starts, not the middle of a full-width
+        // bar — centring that would push the words off the left edge.
+        const scale = focus.maxScale ?? 1.9;
+        const margin = focus.margin ?? 110;
+        const startX = fieldBox.left - view.left;
+        const middleY = barBox.top + barBox.height / 2 - view.top;
+
+        setPanelTransform(
+          `translate(${margin - scale * startX}px, ${
+            view.height / 2 - scale * middleY
+          }px) scale(${scale})`,
+        );
+        return;
+      }
+
       const body = bodyRef.current;
       const column = columnRef.current;
       const row = column?.querySelector<HTMLElement>(
@@ -622,7 +655,14 @@ export default function ChatPanel({
     shownMessages[shownMessages.length - 1]?.sender !== currentlyTyping;
 
   return (
-    <section className="flex h-full min-w-0 flex-1 flex-col">
+    <section
+      ref={panelRef}
+      className="flex h-full min-w-0 flex-1 flex-col transition-transform duration-[2600ms] ease-in-out"
+      style={{
+        transformOrigin: "0 0",
+        transform: panelTransform ?? "translate(0px, 0px) scale(1)",
+      }}
+    >
       {/* Header */}
       <header className="flex h-[100px] shrink-0 items-center gap-5 border-l border-[#d1d7db] bg-[#f0f2f5] px-6">
         <Avatar
@@ -746,14 +786,20 @@ export default function ChatPanel({
       </div>
 
       {/* Input bar */}
-      <div className="flex shrink-0 items-center gap-3 bg-[#f0f2f5] px-4 py-3">
+      <div
+        ref={inputBarRef}
+        className="flex shrink-0 items-center gap-3 bg-[#f0f2f5] px-4 py-3"
+      >
         <IconButton label="Attach">
           <PlusIcon />
         </IconButton>
         <IconButton label="Emoji">
           <EmojiIcon />
         </IconButton>
-        <div className="flex min-h-20 flex-1 items-center rounded-full bg-white px-7 py-4">
+        <div
+          ref={inputFieldRef}
+          className="flex min-h-20 flex-1 items-center rounded-full bg-white px-7 py-4"
+        >
           {draft ? (
             <span className="whitespace-pre-wrap break-words text-[36px] font-semibold leading-[48px] text-[#111b21]">
               {draft}

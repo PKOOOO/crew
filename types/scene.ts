@@ -78,8 +78,11 @@ export type ChatListEvent =
  * measured and fitted to the screen — nothing else stays in frame.
  */
 export type FocusBeat = {
-  /** id of the message to move in on. */
-  messageId: string;
+  /**
+   * id of the message to move in on. Left out, the beat pushes in on the
+   * message box instead — for a scene where nothing is ever sent.
+   */
+  messageId?: string;
   /** Fades in to the left of that message's timestamp. */
   label?: string;
   /**

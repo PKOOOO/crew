@@ -791,6 +791,9 @@ export const scenesSample: Scene[] = [
     appType: "whatsapp",
     label: "6 · Maya types it, never sends",
     chatName: "THE CREW 🔥",
+    // Nothing is ever sent, so the beat closes in on the box itself — the
+    // room watches the words appear in close-up.
+    focus: { delay: 1500, maxScale: 1.9 },
     events: scene6Whatsapp,
   },
   {
