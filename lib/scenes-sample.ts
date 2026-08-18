@@ -912,6 +912,10 @@ export const scenesSample: Scene[] = [
     // No pops here — the video carries its own sound.
     likesSound: "",
     reactions: ["❤️", "🔥", "😍", "❤️", "🔥", "💖"],
+    // Same size as the aftermath in scene 12. Three at a time rather than
+    // five — at this scale that is all the screen holds.
+    maxComments: 3,
+    commentScale: 1.4,
     video: "/maya.mp4",
     events: scene3Tiktok,
   },
