@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { Ban } from "lucide-react";
 import VoiceNote from "@/components/VoiceNote";
 
@@ -13,6 +12,8 @@ export type MessageBubbleProps = {
   image?: string;
   /** Rendered width of the image card in px. Defaults to 420. */
   imageWidth?: number;
+  /** Intrinsic width ÷ height, so the box is right before the file loads. */
+  imageAspect?: number;
   /** Voice note audio (path under /public); renders a voice-note bubble. */
   audio?: string;
   /** Play the voice note as it lands. */
@@ -45,6 +46,7 @@ export default function MessageBubble({
   text,
   image,
   imageWidth = 420,
+  imageAspect,
   audio,
   audioAutoPlay = false,
   paused = false,
@@ -107,13 +109,21 @@ export default function MessageBubble({
             />
           ) : !isDeleted && image ? (
             <div className="relative pb-1">
-              <Image
+              {/* Width is set; height comes from the file's own proportions,
+                  reserved up front by the measured aspect ratio so the bubble
+                  never lands flat and then jump. next/image is no use here —
+                  it wants both dimensions declared, and guessing a square for
+                  an unknown photo is what cropped these in the first place. */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
                 src={image}
                 alt=""
-                width={imageWidth}
-                height={imageWidth}
-                unoptimized
-                className="h-auto rounded-md object-cover"
+                className="block rounded-md"
+                style={{
+                  width: imageWidth,
+                  aspectRatio: imageAspect || undefined,
+                  height: imageAspect ? undefined : "auto",
+                }}
               />
               {text ? (
                 <div className="relative mt-2" style={{ width: imageWidth }}>

@@ -8,6 +8,7 @@ import NotesScreen from "@/components/apps/NotesScreen";
 import LockscreenScreen from "@/components/apps/LockscreenScreen";
 import GroupInfoScreen from "@/components/apps/GroupInfoScreen";
 import ChatListScreen from "@/components/apps/ChatListScreen";
+import FlashScreen from "@/components/apps/FlashScreen";
 
 export type PhoneFrameProps = {
   scene: Scene;
@@ -70,6 +71,9 @@ export default function PhoneFrame({
   const darkStatusBar =
     overlayStatusBar || (scene.appType === "notes" && scene.dark === true);
 
+  // A flashed line is not a phone screen — no clock, no battery, just black.
+  const showStatusBar = scene.appType !== "flash";
+
   return (
     <div
       className={`relative ${sizeClass} shrink-0 rounded-none bg-black p-0 shadow-none md:rounded-[42px] md:p-[16px] md:shadow-[0_24px_60px_rgba(0,0,0,0.45)]`}
@@ -80,13 +84,15 @@ export default function PhoneFrame({
       <div className="relative flex h-full w-full flex-col overflow-hidden rounded-none bg-white md:rounded-[26px]">
         <Curtain phase={screenPhase} />
 
-        <StatusBar
-          dark={darkStatusBar}
-          overlay={overlayStatusBar}
-          time={statusTime ?? scene.statusTime}
-          batteryPercent={batteryPercent}
-          signalBars={signalBars}
-        />
+        {showStatusBar ? (
+          <StatusBar
+            dark={darkStatusBar}
+            overlay={overlayStatusBar}
+            time={statusTime ?? scene.statusTime}
+            batteryPercent={batteryPercent}
+            signalBars={signalBars}
+          />
+        ) : null}
 
         <div className="relative min-h-0 flex-1">
           <Screen
@@ -225,6 +231,7 @@ function Screen({
           events={scene.events}
           username={scene.username}
           video={scene.video}
+          likesSound={scene.likesSound}
           autoStart={playing}
           onFinished={onFinished}
         />
@@ -237,6 +244,15 @@ function Screen({
           notes={scene.notes}
           noteTitle={scene.noteTitle}
           noteDate={scene.noteDate}
+          autoStart={playing}
+          onFinished={onFinished}
+        />
+      );
+    case "flash":
+      return (
+        <FlashScreen
+          text={scene.text}
+          delay={scene.delay}
           autoStart={playing}
           onFinished={onFinished}
         />

@@ -19,6 +19,8 @@ export type TikTokScreenProps = {
   username?: string;
   /** The clip playing behind the UI (path under /public). */
   video?: string;
+  /** Pop heard while the like counter climbs. */
+  likesSound?: string;
   autoStart?: boolean;
   /** Called once when all events have played. */
   onFinished?: () => void;
@@ -50,12 +52,18 @@ export default function TikTokScreen({
   events,
   username = "maya.k",
   video,
+  likesSound = "/likes.mp3",
   autoStart = false,
   onFinished,
 }: TikTokScreenProps) {
   const [caption, setCaption] = useState<string | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
   const [likes, setLikes] = useState(0);
+  /** The post on screen. A swipe replaces all three. */
+  const [clip, setClip] = useState(video);
+  const [author, setAuthor] = useState(username);
+  /** Bumped per swipe so the slide-in animation retriggers. */
+  const [swipe, setSwipe] = useState(0);
   const onFinishedRef = useRef(onFinished);
   const likesSoundRef = useRef<HTMLAudioElement | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -85,7 +93,7 @@ export default function TikTokScreen({
       void main.play().catch(() => {});
     });
     void backdrop?.play().catch(() => {});
-  }, [autoStart, video]);
+  }, [autoStart, clip]);
 
   useEffect(() => {
     onFinishedRef.current = onFinished;
@@ -108,11 +116,29 @@ export default function TikTokScreen({
       setCaption(null);
       setComments([]);
       setLikes(0);
+      setClip(video);
+      setAuthor(username);
       let likesNow = 0;
       let captionShown = false;
 
       for (const event of events) {
         if (cancelled) return;
+
+        if (event.type === "swipe") {
+          // A whole new post: clip, caption, author and count all replaced,
+          // and the screen slides up to meet it.
+          if (event.video !== undefined) setClip(event.video);
+          if (event.username !== undefined) setAuthor(event.username);
+          setCaption(event.caption ?? null);
+          setComments([]);
+          likesNow = event.likes ?? 0;
+          setLikes(likesNow);
+          captionShown = Boolean(event.caption);
+          setSwipe((count) => count + 1);
+
+          await wait(event.duration);
+          continue;
+        }
 
         if (event.type === "caption") {
           if (captionShown) await wait(CAPTION_SWAP_DWELL_MS);
@@ -135,7 +161,7 @@ export default function TikTokScreen({
         // likes: tween from the current value to target over duration. The
         // sound retriggers in short pops while the counter climbs, rather
         // than playing once continuously.
-        const likesSound = (likesSoundRef.current ??= new Audio("/likes.mp3"));
+        const pop = (likesSoundRef.current ??= new Audio(likesSound));
         const from = likesNow;
         let lastPop = 0;
         await new Promise<void>((resolve) => {
@@ -150,13 +176,13 @@ export default function TikTokScreen({
             setLikes(likesNow);
             if (now - lastPop >= LIKE_POP_INTERVAL_MS && progress < 1) {
               lastPop = now;
-              likesSound.currentTime = 0;
-              void likesSound.play().catch(() => {});
+              pop.currentTime = 0;
+              void pop.play().catch(() => {});
             }
             if (progress < 1) {
               frame = requestAnimationFrame(step);
             } else {
-              likesSound.pause();
+              pop.pause();
               resolve();
             }
           };
@@ -175,7 +201,7 @@ export default function TikTokScreen({
       cancelAnimationFrame(frame);
       likesSoundRef.current?.pause();
     };
-  }, [events, autoStart]);
+  }, [events, autoStart, video, username, likesSound]);
 
   const saves = Math.round(likes * 0.5);
   const shares = Math.round(likes * 0.05);
@@ -185,31 +211,42 @@ export default function TikTokScreen({
     <div className="relative h-full w-full overflow-hidden bg-black text-white">
       {/* The clip. It is shot portrait and the frame is landscape, so the
           video is contained at full height over a blurred, cropped copy of
-          itself — no black bars, the way the apps themselves handle it. */}
-      {video ? (
-        <>
-          <video
-            ref={backdropRef}
-            src={video}
-            muted
-            loop
-            playsInline
-            preload="auto"
-            aria-hidden
-            className="absolute inset-0 h-full w-full scale-110 object-cover blur-2xl brightness-[0.45]"
-          />
-          <video
-            ref={videoRef}
-            src={video}
-            loop
-            playsInline
-            preload="auto"
-            className="absolute inset-0 h-full w-full object-contain"
-          />
-        </>
-      ) : (
-        <div className="absolute inset-0 bg-[radial-gradient(120%_80%_at_45%_35%,#3a3230_0%,#1a1614_50%,#0a0908_100%)]" />
-      )}
+          itself — no black bars, the way the apps themselves handle it. The
+          key is the swipe counter: a new post climbs in from below. */}
+      <div
+        key={swipe}
+        className="absolute inset-0"
+        style={
+          swipe > 0
+            ? { animation: "tiktok-swipe-up 0.45s cubic-bezier(0.2,0,0.1,1)" }
+            : undefined
+        }
+      >
+        {clip ? (
+          <>
+            <video
+              ref={backdropRef}
+              src={clip}
+              muted
+              loop
+              playsInline
+              preload="auto"
+              aria-hidden
+              className="absolute inset-0 h-full w-full scale-110 object-cover blur-2xl brightness-[0.45]"
+            />
+            <video
+              ref={videoRef}
+              src={clip}
+              loop
+              playsInline
+              preload="auto"
+              className="absolute inset-0 h-full w-full object-contain"
+            />
+          </>
+        ) : (
+          <div className="absolute inset-0 bg-[radial-gradient(120%_80%_at_45%_35%,#3a3230_0%,#1a1614_50%,#0a0908_100%)]" />
+        )}
+      </div>
 
       {/* Top tabs — pushed clear of the phone's overlay status bar */}
       <div className="absolute inset-x-0 top-0 z-20 flex items-center justify-center gap-6 px-5 pt-11 md:pt-14">
@@ -292,7 +329,7 @@ export default function TikTokScreen({
 
         {/* Username + caption */}
         <div className="flex shrink-0 flex-col gap-2">
-          <div className="text-[32px] font-bold">{username}</div>
+          <div className="text-[32px] font-bold">{author}</div>
           {caption ? (
             <div
               key={caption}
@@ -305,7 +342,7 @@ export default function TikTokScreen({
           <div className="mt-1 flex items-center gap-3 text-[24px] font-medium">
             <Music2 className="h-6 w-6 shrink-0" fill="white" strokeWidth={0} />
             <span className="truncate">
-              Contains: original sound — {username}
+              Contains: original sound — {author}
             </span>
           </div>
         </div>

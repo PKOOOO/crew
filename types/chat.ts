@@ -14,6 +14,11 @@ export type ChatEvent =
        * voice-note bubble instead of text, and plays as it lands.
        */
       audio?: string;
+      /**
+       * Already on screen when the scene opens — carried over from an earlier
+       * scene rather than landing now. No delay, no typing, no tone.
+       */
+      settled?: boolean;
       /** Overrides the live clock, e.g. "11:43 PM". */
       time?: string;
     }

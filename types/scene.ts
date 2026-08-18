@@ -10,6 +10,21 @@ export type AppType =
 
 export type TikTokEvent =
   | {
+      /**
+       * Swipes up to the next post in the feed: the screen slides, and the
+       * clip, caption, author and like count are all replaced.
+       */
+      type: "swipe";
+      /** Clip under /public. Omitted keeps whatever was playing. */
+      video?: string;
+      caption?: string;
+      username?: string;
+      /** Likes already on the post — it is somebody else's, not landing live. */
+      likes?: number;
+      /** How long to sit on it before the next event. */
+      duration: number;
+    }
+  | {
       /** Animates the like counter from its current value up to target. */
       type: "likes";
       target: number;
@@ -67,7 +82,13 @@ export type FocusBeat = {
   messageId: string;
   /** Fades in to the left of that message's timestamp. */
   label?: string;
-  /** Hold before the move starts, ms. Defaults to 2500. */
+  /**
+   * Crawl the whole conversation top to bottom over this many ms first, so
+   * every message is read before the push-in. A chat that already fits the
+   * screen simply holds for the same length of time.
+   */
+  scrollMs?: number;
+  /** Hold after the read-through, before the move starts, ms. Default 2500. */
   delay?: number;
   /** Ceiling on the fitted scale, so a short bubble can't fill the wall. */
   maxScale?: number;
@@ -232,6 +253,8 @@ export type Scene =
       username?: string;
       /** Clip playing behind the UI (path under /public), e.g. "/maya.mp4". */
       video?: string;
+      /** Pop heard while the like counter climbs. Defaults to "/likes.mp3". */
+      likesSound?: string;
     })
   | (SceneBase & {
       appType: "notes";
@@ -244,4 +267,11 @@ export type Scene =
       /** Centered timestamp on the open note. */
       noteDate?: string;
     })
-  | (SceneBase & { appType: "lockscreen"; events: LockscreenEvent[] });
+  | (SceneBase & { appType: "lockscreen"; events: LockscreenEvent[] })
+  | (SceneBase & {
+      /** One line on a black screen — no app, no chrome. */
+      appType: "flash";
+      text: string;
+      /** Beat of black before the line appears, ms. */
+      delay?: number;
+    });

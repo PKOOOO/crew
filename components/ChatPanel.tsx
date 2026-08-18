@@ -99,12 +99,61 @@ function voiceLengthMs(src: string): Promise<number> {
   });
 }
 
+/**
+ * Intrinsic width ÷ height of an attachment, cached per src.
+ *
+ * Without this the bubble has no idea how tall a picture will be until the
+ * bytes arrive: it lands flat, the chat auto-scrolls against that wrong
+ * height, and the image looks cut off until the next message shoves the view
+ * back down. Probing up front both reserves the right box and warms the
+ * browser cache, so the picture is there the moment the bubble is.
+ */
+const aspectCache = new Map<string, Promise<number>>();
+
+function imageAspect(src: string): Promise<number> {
+  const cached = aspectCache.get(src);
+  if (cached) return cached;
+
+  const probe = new Promise<number>((resolve) => {
+    if (typeof window === "undefined") {
+      resolve(0);
+      return;
+    }
+
+    const picture = new window.Image();
+    let settled = false;
+    const finish = (ratio: number) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(guard);
+      resolve(ratio);
+    };
+    // Falling back to 0 means "size it however it loads" — the old behaviour,
+    // never a wrong box.
+    const guard = setTimeout(() => finish(0), 4000);
+
+    picture.onload = () =>
+      finish(
+        picture.naturalHeight > 0
+          ? picture.naturalWidth / picture.naturalHeight
+          : 0,
+      );
+    picture.onerror = () => finish(0);
+    picture.src = src;
+  });
+
+  aspectCache.set(src, probe);
+  return probe;
+}
+
 export type VisibleMessage = {
   id: string;
   sender: string;
   text: string;
   image?: string;
   imageWidth?: number;
+  /** Intrinsic aspect ratio, so the bubble reserves the right height. */
+  imageAspect?: number;
   audio?: string;
   timestamp: string;
   isFirstInGroup: boolean;
@@ -302,6 +351,12 @@ export default function ChatPanel({
       return true;
     };
 
+    // Measure and cache every attachment before a word is said, so no bubble
+    // ever lands at the wrong height.
+    for (const event of script) {
+      if (event.type === "message" && event.image) void imageAspect(event.image);
+    }
+
     const play = async () => {
       // Every run starts from a clean slate at event index 0.
       setVisibleMessages([]);
@@ -346,10 +401,17 @@ export default function ChatPanel({
         }
 
         if (event.type === "message") {
-          await wait(event.delay);
-          if (cancelled) return;
+          // Carried over from an earlier scene: it is simply already there.
+          const settled = event.settled === true;
 
-          if (isSelf(event.sender)) {
+          if (!settled) {
+            await wait(event.delay);
+            if (cancelled) return;
+          }
+
+          if (settled) {
+            // nothing to act out
+          } else if (isSelf(event.sender)) {
             // Type it out in the input box, pause, then "send" it.
             if (event.text) {
               if (!(await typeDraft(event.text, SELF_TYPE_MS_PER_CHAR)))
@@ -367,12 +429,17 @@ export default function ChatPanel({
             setCurrentlyTyping(null);
           }
 
+          // Resolves from the cache warmed above, so this doesn't stall.
+          const aspect = event.image ? await imageAspect(event.image) : 0;
+          if (cancelled) return;
+
           const message: VisibleMessage = {
             id: event.id,
             sender: event.sender,
             text: event.text,
             image: event.image,
             imageWidth: event.imageWidth,
+            imageAspect: aspect || undefined,
             audio: event.audio,
             timestamp: event.time ?? nowTime(),
             // Computed once, at insert time, and never recomputed.
@@ -380,8 +447,9 @@ export default function ChatPanel({
             isDeleted: false,
           };
 
-          // A voice note announces itself by playing — no tone over the top.
-          if (!event.audio) {
+          // A voice note announces itself by playing — no tone over the top,
+          // and a message that was already there never made a sound now.
+          if (!event.audio && !settled) {
             if (isSelf(event.sender)) playSentTone();
             else playTone();
           }
@@ -463,6 +531,30 @@ export default function ChatPanel({
   // The transform that fits one bubble to the screen. Null until measured.
   const [focusTransform, setFocusTransform] = useState<string | null>(null);
 
+  // Read-through: crawl the conversation from the top at a constant rate, so
+  // the room gets to every message before the view closes in on one of them.
+  useEffect(() => {
+    const readMs = focus?.scrollMs;
+    if (!readMs || runId === null || paused) return;
+
+    const body = bodyRef.current;
+    if (!body) return;
+
+    body.scrollTop = 0;
+    let frame = 0;
+    const startedAt = performance.now();
+
+    const step = (now: number) => {
+      const distance = body.scrollHeight - body.clientHeight;
+      const progress = Math.min(1, (now - startedAt) / readMs);
+      body.scrollTop = distance * progress;
+      if (progress < 1) frame = requestAnimationFrame(step);
+    };
+    frame = requestAnimationFrame(step);
+
+    return () => cancelAnimationFrame(frame);
+  }, [focus, runId, paused]);
+
   useEffect(() => {
     if (!focus || runId === null || paused) return;
 
@@ -497,16 +589,19 @@ export default function ChatPanel({
       const y = view.top + view.height / 2 - col.top - scale * centreY;
 
       setFocusTransform(`translate(${x}px, ${y}px) scale(${scale})`);
-    }, focus.delay ?? 2500);
+    }, (focus.scrollMs ?? 0) + (focus.delay ?? 2500));
 
     return () => clearTimeout(timer);
   }, [focus, runId, paused]);
 
   /* ----------------------------- auto-scroll ----------------------------- */
   useEffect(() => {
+    // A read-through drives scrollTop itself; snapping to the bottom here
+    // would fight it.
+    if (focus?.scrollMs) return;
     const body = bodyRef.current;
     if (body) body.scrollTop = body.scrollHeight;
-  }, [shownMessages, currentlyTyping]);
+  }, [shownMessages, currentlyTyping, focus]);
 
   const isSelfSender = (sender: string) =>
     sender === "me" || (!!selfName && sender === selfName);
@@ -616,6 +711,7 @@ export default function ChatPanel({
               text={message.text}
               image={message.image}
               imageWidth={message.imageWidth}
+              imageAspect={message.imageAspect}
               audio={message.audio}
               // A flashback's notes are already old news — they don't replay.
               audioAutoPlay={!instant}

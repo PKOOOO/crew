@@ -96,6 +96,16 @@
   }
 }
 
+/* Swiping up to the next post: the new one climbs in from below. */
+@keyframes tiktok-swipe-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
 /* The focused message's last-seen line and timestamp, breathing. */
 @keyframes wa-meta-breathe {
   0%,

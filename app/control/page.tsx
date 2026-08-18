@@ -15,6 +15,7 @@ const APP_BADGE: Record<string, string> = {
   tiktok: "bg-[#7a0f28] text-[#ffd7e0]",
   notes: "bg-[#6a5210] text-[#fdf3d9]",
   lockscreen: "bg-[#22306b] text-[#dbe3ff]",
+  flash: "bg-[#2a2a2a] text-[#e8e8e8]",
 };
 
 /** Phone remote. Big touch targets, no video preview. */
