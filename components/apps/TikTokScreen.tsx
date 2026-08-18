@@ -36,7 +36,7 @@ const LIKE_POP_INTERVAL_MS = 320;
  * Comments kept on screen. Older ones drop off whole rather than being
  * sliced in half by the overflow edge.
  */
-const MAX_VISIBLE_COMMENTS = 4;
+const MAX_VISIBLE_COMMENTS = 5;
 
 type Comment = { author: string; text: string };
 
@@ -317,7 +317,7 @@ export default function TikTokScreen({
             <div
               key={`${comment.author}-${index}`}
               className="w-fit max-w-full rounded-2xl bg-black/50 px-7 py-4 text-[46px] font-bold leading-snug backdrop-blur-sm"
-              style={{ animation: "wa-slide-up 0.3s ease-out" }}
+              style={{ animation: "tiktok-comment-in 0.5s ease-out" }}
             >
               <span className="font-semibold text-white/70">
                 @{comment.author}

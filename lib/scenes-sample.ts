@@ -560,24 +560,69 @@ const scene12Tiktok: TikTokEvent[] = [
   { type: "caption", text: "RIP Maya 💔" },
   { type: "caption", text: "Gone too soon." },
   { type: "caption", text: "Check on your friends." },
+  { type: "likes", target: 2800, duration: 3000 },
+
+  // The crew posting their grief in public, in the same voice they used to
+  // post everything else. Only Leo's says anything true.
   {
     type: "comment",
-    author: "classmate1",
-    text: "Still can't believe this.",
-    delay: 2000,
+    author: "jay_official",
+    text: "Nooo 💔💔💔",
+    delay: 2600,
   },
+  { type: "comment", author: "tash.k", text: "RIP angel 🕊️", delay: 2400 },
   {
     type: "comment",
-    author: "classmate2",
-    text: "We miss you every day.",
-    delay: 2000,
-  },
-  {
-    type: "comment",
-    author: "classmate3",
+    author: "kevin_m",
     text: "She was always smiling 💔",
-    delay: 2000,
+    delay: 2600,
   },
+  {
+    type: "comment",
+    author: "aisha.w",
+    text: "I can't stop crying 😭😭",
+    delay: 2200,
+  },
+  {
+    type: "comment",
+    author: "daisy.mwende",
+    text: "This can't be real 💔",
+    delay: 2400,
+  },
+  { type: "comment", author: "nia_x", text: "Gone too soon 🕊️", delay: 2200 },
+  {
+    type: "comment",
+    author: "ryan_254",
+    text: "Check on your friends people 🙏",
+    delay: 2600,
+  },
+  {
+    type: "comment",
+    author: "brian.o",
+    text: "We love you Maya ❤️",
+    delay: 2400,
+  },
+  {
+    type: "comment",
+    author: "shantel.a",
+    text: "She didn't deserve this 😭",
+    delay: 2200,
+  },
+  {
+    type: "comment",
+    author: "mo_kim",
+    text: "Fly high queen 🕊️🕊️",
+    delay: 2400,
+  },
+  {
+    type: "comment",
+    author: "val.otieno",
+    text: "Rest well Maya 💔",
+    delay: 2200,
+  },
+  // The one that isn't performance.
+  { type: "comment", author: "leo.m", text: "I'm sorry.", delay: 4500 },
+
   { type: "likes", target: 12400, duration: 6000 },
 ];
 
@@ -836,7 +881,7 @@ export const scenesSample: Scene[] = [
     label: "15 · Notes — the unsent drafts",
     dark: true,
     notes: mayaNotes,
-    noteTitle: "drafts",
+    noteTitle: "Maya's Diary",
     noteDate: "19 July 2026 at 23:43",
     events: scene15Notes,
   },

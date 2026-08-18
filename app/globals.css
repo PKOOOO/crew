@@ -96,6 +96,25 @@
   }
 }
 
+/*
+ * A comment arriving. The box grows from nothing at the bottom of a
+ * bottom-anchored stack, which pushes everything above it smoothly up the
+ * screen instead of jumping. max-height is the only height a keyframe can
+ * animate to, so it overshoots deliberately — the rise reads as one motion.
+ */
+@keyframes tiktok-comment-in {
+  from {
+    max-height: 0;
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    max-height: 240px;
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 /* Swiping up to the next post: the new one climbs in from below. */
 @keyframes tiktok-swipe-up {
   from {
