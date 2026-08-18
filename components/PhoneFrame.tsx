@@ -232,6 +232,9 @@ function Screen({
           username={scene.username}
           video={scene.video}
           likesSound={scene.likesSound}
+          reactions={scene.reactions}
+          maxComments={scene.maxComments}
+          commentScale={scene.commentScale}
           autoStart={playing}
           onFinished={onFinished}
         />
@@ -253,6 +256,8 @@ function Screen({
         <FlashScreen
           text={scene.text}
           delay={scene.delay}
+          size={scene.size}
+          hold={scene.hold}
           autoStart={playing}
           onFinished={onFinished}
         />

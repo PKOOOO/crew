@@ -269,8 +269,8 @@ export default function NotesScreen({
                       key={index}
                       className={`break-words pb-2 ${
                         isLast
-                          ? "text-[104px] font-bold leading-[1.3]"
-                          : "text-[78px] font-semibold leading-[1.3] opacity-75"
+                          ? "text-[132px] font-bold leading-[1.3]"
+                          : "text-[96px] font-semibold leading-[1.3] opacity-75"
                       }`}
                       style={isLast ? { color: ACCENT } : undefined}
                     >
@@ -282,7 +282,7 @@ export default function NotesScreen({
             </div>
           ) : (
             <div className="min-h-0 flex-1 overflow-hidden pt-4">
-              <p className="whitespace-pre-wrap break-words text-[46px] font-semibold leading-[1.45]">
+              <p className="whitespace-pre-wrap break-words text-[150px] font-semibold leading-[1.45]">
                 {text}
                 <span
                   aria-hidden

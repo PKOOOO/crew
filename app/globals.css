@@ -97,6 +97,30 @@
 }
 
 /*
+ * Live reactions climbing the right edge. Each one drifts sideways on the
+ * way up — --drift is set per emoji so no two take the same path.
+ */
+@keyframes tiktok-float {
+  0% {
+    transform: translate(0, 0) scale(0.55);
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  50% {
+    transform: translate(var(--drift, 40px), -520px) scale(1);
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(calc(var(--drift, 40px) * -0.5), -1060px) scale(1.25);
+    opacity: 0;
+  }
+}
+
+/*
  * A comment arriving. The box grows from nothing at the bottom of a
  * bottom-anchored stack, which pushes everything above it smoothly up the
  * screen instead of jumping. max-height is the only height a keyframe can
@@ -106,10 +130,10 @@
   from {
     max-height: 0;
     opacity: 0;
-    transform: translateY(16px);
+    transform: translateY(24px);
   }
   to {
-    max-height: 240px;
+    max-height: 460px;
     opacity: 1;
     transform: translateY(0);
   }
@@ -125,14 +149,25 @@
   }
 }
 
-/* The focused message's last-seen line and timestamp, breathing. */
-@keyframes wa-meta-breathe {
+/*
+ * The focused message's timestamp, glowing. It brightens from the ordinary
+ * grey to WhatsApp's green and picks up a halo, so the eye is pulled to the
+ * time itself rather than to any words around it. The ticks set their own
+ * colour, so they stay blue through it.
+ */
+@keyframes wa-meta-glow {
   0%,
   100% {
-    opacity: 0.3;
+    opacity: 0.6;
+    color: #667781;
+    text-shadow: none;
   }
   50% {
     opacity: 1;
+    color: #00a884;
+    text-shadow:
+      0 0 22px rgba(0, 168, 132, 0.75),
+      0 0 8px rgba(0, 168, 132, 0.55);
   }
 }
 

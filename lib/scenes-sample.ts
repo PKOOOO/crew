@@ -1,7 +1,6 @@
 import type { ChatEvent } from "@/types/chat";
 import type {
   ChatListEvent,
-  LockscreenEvent,
   NoteListItem,
   NotesEvent,
   Scene,
@@ -20,7 +19,7 @@ import type {
  *   8  11:43 PM — Maya scrolls the feed
  *   9  the pivotal night chat                      convo7
  *   10 Ms. Mwangi / Dad / Mom — never opened       convo8
- *   11 the final vibrate — "READ 11:43 PM"         convo8
+ *   11 title card — READ 11:43 PM
  *   12 aftermath — RIP Maya                        convo9
  *   13 the chat sits in dead silence (flashback)   convo10
  *   14 THE CREW — would you notice?
@@ -30,15 +29,29 @@ import type {
 /* 1 — The group lights up about the school day. Everyone has something to
  * say. Except Maya: all she manages is 😊 */
 const scene1Whatsapp: ChatEvent[] = [
+  // Tash shouts first, then the photo lands on its own — the class picture
+  // gets the screen to itself.
   {
     type: "message",
     id: "s1-1",
     sender: "Tash",
     text: "BEST CLASS EVER!❤️❤️❤️",
-    image: "/scene1.jpeg",
-    imageWidth: 560,
     time: "1:03 PM",
     delay: 2400,
+  },
+  {
+    type: "message",
+    id: "s1-1b",
+    sender: "Tash",
+    // No caption — the timestamp sits on the photo, the way WhatsApp does it.
+    text: "",
+    image: "/scene1.jpeg",
+    // Sized before the scene's 2.2 zoom, so this lands at ~570px on screen —
+    // the photo stays as it was while everything around it doubles, and the
+    // whole card still fits one screen.
+    imageWidth: 260,
+    time: "1:03 PM",
+    delay: 2600,
   },
   {
     type: "message",
@@ -118,6 +131,7 @@ const scene2Whatsapp: ChatEvent[] = [
     sender: "Jay",
     text: "",
     image: "/m1.gif",
+    imageWidth: 200,
     time: "8:04 PM",
     delay: 1600,
   },
@@ -137,6 +151,7 @@ const scene2Whatsapp: ChatEvent[] = [
     sender: "Kevin",
     text: "",
     image: "/m2.webp",
+    imageWidth: 200,
     time: "8:05 PM",
     delay: 1300,
   },
@@ -154,6 +169,7 @@ const scene2Whatsapp: ChatEvent[] = [
     sender: "Aisha",
     text: "",
     image: "/m3.webp",
+    imageWidth: 200,
     time: "8:06 PM",
     delay: 1300,
   },
@@ -174,6 +190,7 @@ const scene2Whatsapp: ChatEvent[] = [
     sender: "Jay",
     text: "",
     image: "/m4.gif",
+    imageWidth: 200,
     time: "8:07 PM",
     delay: 1200,
   },
@@ -201,6 +218,7 @@ const scene2Whatsapp: ChatEvent[] = [
     sender: "Tash",
     text: "",
     image: "/m5.webp",
+    imageWidth: 200,
     time: "8:08 PM",
     delay: 1300,
   },
@@ -210,6 +228,7 @@ const scene2Whatsapp: ChatEvent[] = [
     sender: "Kevin",
     text: "",
     image: "/m6.webp",
+    imageWidth: 200,
     time: "8:09 PM",
     delay: 1300,
   },
@@ -229,6 +248,7 @@ const scene2Whatsapp: ChatEvent[] = [
     sender: "Aisha",
     text: "",
     image: "/m7.webp",
+    imageWidth: 200,
     time: "8:10 PM",
     delay: 1200,
   },
@@ -238,6 +258,7 @@ const scene2Whatsapp: ChatEvent[] = [
     sender: "Jay",
     text: "",
     image: "/m1.webp",
+    imageWidth: 200,
     time: "8:10 PM",
     delay: 1200,
   },
@@ -254,21 +275,99 @@ const scene2Whatsapp: ChatEvent[] = [
 /* 3 — She nails the take. Uploads it. Within seconds: 100… 300… 800 likes. */
 const scene3Tiktok: TikTokEvent[] = [
   { type: "likes", target: 100, duration: 2000 },
+
+  // The whole school adoring the version of her that is performing.
   {
     type: "comment",
     author: "jay_official",
     text: "You're hilarious!",
-    delay: 1600,
+    delay: 1500,
   },
+  { type: "comment", author: "aisha.w", text: "SCREAMING 😭😭", delay: 1300 },
+  { type: "comment", author: "nia_x", text: "not the hairbrush 💀", delay: 1400 },
+  {
+    type: "comment",
+    author: "daisy.mwende",
+    text: "this is so me fr 😭",
+    delay: 1300,
+  },
+  {
+    type: "comment",
+    author: "brian.o",
+    text: "do it again do it again",
+    delay: 1400,
+  },
+
   { type: "likes", target: 300, duration: 2200 },
+
   {
     type: "comment",
     author: "tash.k",
     text: "I wish I had your life.",
-    delay: 1800,
+    delay: 1500,
   },
+  {
+    type: "comment",
+    author: "ryan_254",
+    text: "how are you always this funny 😂",
+    delay: 1300,
+  },
+  { type: "comment", author: "leo.m", text: "😂😂", delay: 1200 },
+  {
+    type: "comment",
+    author: "shantel.a",
+    text: "the way she NAILED it",
+    delay: 1400,
+  },
+  {
+    type: "comment",
+    author: "mo_kim",
+    text: "posting this on my story 🔥",
+    delay: 1300,
+  },
+  {
+    type: "comment",
+    author: "wanjiku_",
+    text: "okay but the timing 😭",
+    delay: 1300,
+  },
+  {
+    type: "comment",
+    author: "val.otieno",
+    text: "she's never had a bad day 😭",
+    delay: 1400,
+  },
+
   { type: "likes", target: 800, duration: 2600 },
-  { type: "comment", author: "kevin_m", text: "Queen!", delay: 1600 },
+
+  { type: "comment", author: "kevin_m", text: "Queen!", delay: 1500 },
+  { type: "comment", author: "sam.254", text: "MAYA FOR PRESIDENT", delay: 1300 },
+  {
+    type: "comment",
+    author: "trizah.b",
+    text: "she really is the moment ✨",
+    delay: 1300,
+  },
+  { type: "comment", author: "amani_k", text: "my comfort account 🫶", delay: 1400 },
+  {
+    type: "comment",
+    author: "joy.wambui",
+    text: "wish I was this confident",
+    delay: 1300,
+  },
+  { type: "comment", author: "dan.mk", text: "replayed this 12 times", delay: 1400 },
+  {
+    type: "comment",
+    author: "kev.otis",
+    text: "living her best life 🔥🔥",
+    delay: 1300,
+  },
+  {
+    type: "comment",
+    author: "cynthia.a",
+    text: "the happiest girl in school 😭❤️",
+    delay: 1500,
+  },
 ];
 
 /* 4 — A secret account. No profile picture. No followers. This is where
@@ -435,15 +534,30 @@ const scene9Whatsapp: ChatEvent[] = [
     delay: 2600,
   },
 
-  // Maya typing… Maya typing… Maya typing… The audience watches her type.
-  { type: "typing", sender: "Maya", duration: 5000, draft: "Guys..." },
+  // Maya typing… Maya typing… Maya typing… The view closes in on the box for
+  // all three drafts and only pulls back out once she has finally sent
+  // something — the audience watches her write, then sees where it landed.
+  {
+    type: "typing",
+    sender: "Maya",
+    duration: 5000,
+    draft: "Guys...",
+    zoom: true,
+  },
   {
     type: "typing",
     sender: "Maya",
     duration: 6500,
     draft: "Can somebody talk to me?",
+    zoom: true,
   },
-  { type: "typing", sender: "Maya", duration: 4500, draft: "I'm not okay." },
+  {
+    type: "typing",
+    sender: "Maya",
+    duration: 4500,
+    draft: "I'm not okay.",
+    zoom: true,
+  },
 
   // Finally… 11:43 PM
   {
@@ -462,7 +576,10 @@ const scene9Whatsapp: ChatEvent[] = [
     id: "s8-6",
     sender: "Kevin",
     text: "",
-    image: "/meme.png",
+    image: "/cat.gif",
+    // Set before the scene's zoom so the cat lands ~440px wide instead of
+    // bursting the bubble.
+    imageWidth: 200,
     time: "11:43 PM",
     delay: 1200,
   },
@@ -536,25 +653,6 @@ const scene10ChatList: ChatListEvent[] = [
   },
 ];
 
-/* 11 — Then... her phone vibrates one final time. */
-const scene11Lockscreen: LockscreenEvent[] = [
-  {
-    type: "notification",
-    id: "final",
-    app: "message",
-    from: "THE CREW 🔥",
-    preview: "Guys... Can I tell you something?",
-    icon: "/apple.png",
-    delay: 3000,
-  },
-  {
-    type: "status",
-    targetNotificationId: "final",
-    status: "read",
-    delay: 3000,
-  },
-];
-
 /* 12 — Phones come out. Some cry. Some record. Some post. */
 const scene12Tiktok: TikTokEvent[] = [
   { type: "caption", text: "RIP Maya 💔" },
@@ -620,6 +718,43 @@ const scene12Tiktok: TikTokEvent[] = [
     text: "Rest well Maya 💔",
     delay: 2200,
   },
+  {
+    type: "comment",
+    author: "cynthia.w",
+    text: "I saw her yesterday. She looked fine 💔",
+    delay: 2400,
+  },
+  {
+    type: "comment",
+    author: "tash.k",
+    text: "Why didn't she say anything 😭",
+    delay: 2200,
+  },
+  {
+    type: "comment",
+    author: "denno_254",
+    text: "School will never be the same 🕊️",
+    delay: 2400,
+  },
+  {
+    type: "comment",
+    author: "jay_official",
+    text: "I keep waiting for her to text back",
+    delay: 2600,
+  },
+  {
+    type: "comment",
+    author: "wanjiru.a",
+    text: "Rest in peace beautiful soul 🕯️",
+    delay: 2200,
+  },
+  {
+    type: "comment",
+    author: "kevin_m",
+    text: "We were literally just laughing 💔",
+    delay: 2600,
+  },
+
   // The one that isn't performance.
   { type: "comment", author: "leo.m", text: "I'm sorry.", delay: 4500 },
 
@@ -700,14 +835,15 @@ const scene14Whatsapp: ChatEvent[] = [
   },
   { type: "delete", targetId: "s14-2", delay: 0 },
 
-  // Typing… typing… typing… He starts, stops, starts again.
-  { type: "typing", sender: "Leo", duration: 4000 },
-  { type: "typing", sender: "Leo", duration: 3500 },
-  { type: "typing", sender: "Leo", duration: 4500 },
+  // Typing… typing… typing… She starts, stops, starts again. The header
+  // names her the whole time: Tash typing…
+  { type: "typing", sender: "Tash", duration: 4000 },
+  { type: "typing", sender: "Tash", duration: 3500 },
+  { type: "typing", sender: "Tash", duration: 4500 },
   {
     type: "message",
     id: "s14-3",
-    sender: "Leo",
+    sender: "Tash",
     text: "If your friend suddenly went silent today... Would you notice?",
     time: "7:12 AM",
     delay: 2500,
@@ -719,7 +855,9 @@ const scene14Whatsapp: ChatEvent[] = [
 const scene15Notes: NotesEvent[] = [
   {
     type: "drafts",
-    duration: 56000,
+    // Bigger type means more distance to travel, so the duration goes up with
+    // it — otherwise the same 56s would read as a faster crawl.
+    duration: 70000,
     items: [
       "I keep smiling so nobody asks.",
       "Everyone thinks I'm the fun one.",
@@ -748,6 +886,9 @@ export const scenesSample: Scene[] = [
     appType: "whatsapp",
     label: "1 · THE CREW — BEST CLASS EVER (Maya sends only 😊)",
     chatName: "THE CREW 🔥",
+    // Two cards fill the screen at a time; each new one scrolls the oldest
+    // off the top.
+    textScale: 2.2,
     events: scene1Whatsapp,
   },
   {
@@ -756,6 +897,10 @@ export const scenesSample: Scene[] = [
     appType: "whatsapp",
     label: "2 · THE CREW — party Saturday + memes",
     chatName: "THE CREW 🔥",
+    // Same treatment as scenes 1 and 7 — two cards fill the screen at a time.
+    // The stickers carry their own imageWidth so the zoom doesn't blow them
+    // past the bubble's max-width.
+    textScale: 2.2,
     events: scene2Whatsapp,
   },
   {
@@ -764,7 +909,9 @@ export const scenesSample: Scene[] = [
     appType: "tiktok",
     label: "3 · TikTok — 100… 300… 800 likes",
     username: "maya.k",
-    likesSound: "/like.mp3",
+    // No pops here — the video carries its own sound.
+    likesSound: "",
+    reactions: ["❤️", "🔥", "😍", "❤️", "🔥", "💖"],
     video: "/maya.mp4",
     events: scene3Tiktok,
   },
@@ -802,7 +949,9 @@ export const scenesSample: Scene[] = [
     appType: "whatsapp",
     label: "7 · THE CREW — You're famous MAYA!",
     chatName: "THE CREW 🔥",
-    textScale: 1.3,
+    // Big enough that only two cards fit the screen at once: Jay and Kevin
+    // fill it, then Tash's arrival scrolls Jay off the top.
+    textScale: 2.2,
     events: scene7Whatsapp,
   },
   {
@@ -820,6 +969,9 @@ export const scenesSample: Scene[] = [
     appType: "whatsapp",
     label: "9 · The pivotal night chat (11:31 → 11:43 PM)",
     chatName: "THE CREW 🔥",
+    // Two cards at a time, as in scenes 1, 2 and 7 — so Maya's line and the
+    // meme that answers it can't share the screen with anything else.
+    textScale: 2.2,
     events: scene9Whatsapp,
   },
   {
@@ -836,11 +988,15 @@ export const scenesSample: Scene[] = [
   },
   {
     id: "scene-11",
-    statusTime: "23:43",
-    statusDate: "Sun 19",
-    appType: "lockscreen",
-    label: "11 · One final vibrate — READ 11:43 PM",
-    events: scene11Lockscreen,
+    // The title card, not a phone. No status bar, no clock — the flash
+    // screen draws nothing but the line.
+    appType: "flash",
+    label: "11 · TITLE — READ 11:43 PM",
+    text: "READ 11:43 PM",
+    // A long beat of black first, then it holds, so the house can sit in it.
+    delay: 2000,
+    size: 190,
+    hold: 9000,
   },
   {
     id: "scene-12",
@@ -848,6 +1004,12 @@ export const scenesSample: Scene[] = [
     appType: "tiktok",
     label: "12 · Aftermath — RIP Maya 💔",
     username: "school.memories",
+    // The counter still climbs, but silently — nothing pops over the grief.
+    likesSound: "",
+    // Three at a time, each one big enough to be read from the back — the
+    // grief scrolls past rather than piling up small.
+    maxComments: 3,
+    commentScale: 1.4,
     events: scene12Tiktok,
   },
   {
@@ -857,13 +1019,17 @@ export const scenesSample: Scene[] = [
     label: "13 · The chat sits in dead silence (flashback)",
     chatName: "THE CREW 🔥",
     instant: true,
+    // Same size as the rest of the WhatsApp scenes. The read-through has more
+    // ground to cover at this scale, so it is given longer below.
+    textScale: 2.2,
     // The chat crawls past top to bottom so every message is read — Leo's
     // deleted box last of all — then the view closes in on the one message
     // that mattered and names when she was last seen.
     focus: {
       messageId: "s12-1",
-      label: "Last seen yesterday",
-      scrollMs: 9000,
+      // No words beside the time — just the 11:43 PM, glowing.
+      scrollDelay: 3000,
+      scrollMs: 26000,
       delay: 1500,
     },
     events: scene13Whatsapp,
@@ -874,7 +1040,8 @@ export const scenesSample: Scene[] = [
     appType: "whatsapp",
     label: "14 · THE CREW — would you notice?",
     chatName: "THE CREW 🔥",
-    textScale: 1.3,
+    // As big as the rest of the WhatsApp scenes.
+    textScale: 2.2,
     events: scene14Whatsapp,
   },
   {

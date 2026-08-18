@@ -19,8 +19,14 @@ export type TikTokScreenProps = {
   username?: string;
   /** The clip playing behind the UI (path under /public). */
   video?: string;
-  /** Pop heard while the like counter climbs. */
+  /** Pop heard while the like counter climbs. Empty string plays nothing. */
   likesSound?: string;
+  /** Live reactions floating up the right edge, e.g. ["❤️", "🔥"]. */
+  reactions?: string[];
+  /** How many comments stay on screen before the oldest drops off. */
+  maxComments?: number;
+  /** Scales the comment stack — boxes, text and padding together. */
+  commentScale?: number;
   autoStart?: boolean;
   /** Called once when all events have played. */
   onFinished?: () => void;
@@ -33,12 +39,32 @@ const CAPTION_SWAP_DWELL_MS = 1600;
 const LIKE_POP_INTERVAL_MS = 320;
 
 /**
- * Comments kept on screen. Older ones drop off whole rather than being
- * sliced in half by the overflow edge.
+ * Comments kept on screen by default. Older ones drop off whole rather than
+ * being sliced in half by the overflow edge.
  */
 const MAX_VISIBLE_COMMENTS = 5;
 
 type Comment = { author: string; text: string };
+
+/**
+ * Fixed launch settings for the floating reactions — deliberately not random,
+ * so the server and the browser render the same thing. Varied enough that the
+ * stream never looks like a repeating loop.
+ */
+const FLOATERS = [
+  { right: 40, size: 96, duration: 6.4, delay: 0, drift: 54 },
+  { right: 150, size: 74, duration: 7.8, delay: 0.9, drift: -46 },
+  { right: 90, size: 118, duration: 5.8, delay: 1.7, drift: 38 },
+  { right: 250, size: 82, duration: 8.4, delay: 2.4, drift: -62 },
+  { right: 20, size: 68, duration: 7.2, delay: 3.1, drift: 70 },
+  { right: 190, size: 104, duration: 6.1, delay: 3.8, drift: 30 },
+  { right: 120, size: 88, duration: 8.9, delay: 4.6, drift: -34 },
+  { right: 300, size: 72, duration: 6.8, delay: 5.2, drift: 58 },
+  { right: 60, size: 110, duration: 7.5, delay: 6.0, drift: -50 },
+  { right: 220, size: 92, duration: 6.3, delay: 6.7, drift: 44 },
+  { right: 160, size: 78, duration: 8.1, delay: 7.4, drift: -40 },
+  { right: 100, size: 100, duration: 7.0, delay: 8.2, drift: 66 },
+];
 
 /** TikTok-style count: 999 → "999", 1200 → "1.2K", 4200000 → "4.2M". */
 function formatCount(count: number): string {
@@ -53,6 +79,9 @@ export default function TikTokScreen({
   username = "maya.k",
   video,
   likesSound = "/likes.mp3",
+  reactions,
+  maxComments = MAX_VISIBLE_COMMENTS,
+  commentScale = 1,
   autoStart = false,
   onFinished,
 }: TikTokScreenProps) {
@@ -161,7 +190,9 @@ export default function TikTokScreen({
         // likes: tween from the current value to target over duration. The
         // sound retriggers in short pops while the counter climbs, rather
         // than playing once continuously.
-        const pop = (likesSoundRef.current ??= new Audio(likesSound));
+        const pop = likesSound
+          ? (likesSoundRef.current ??= new Audio(likesSound))
+          : null;
         const from = likesNow;
         let lastPop = 0;
         await new Promise<void>((resolve) => {
@@ -174,7 +205,7 @@ export default function TikTokScreen({
             const progress = Math.min(1, (now - startedAt) / event.duration);
             likesNow = Math.round(from + (event.target - from) * progress);
             setLikes(likesNow);
-            if (now - lastPop >= LIKE_POP_INTERVAL_MS && progress < 1) {
+            if (pop && now - lastPop >= LIKE_POP_INTERVAL_MS && progress < 1) {
               lastPop = now;
               pop.currentTime = 0;
               void pop.play().catch(() => {});
@@ -182,7 +213,7 @@ export default function TikTokScreen({
             if (progress < 1) {
               frame = requestAnimationFrame(step);
             } else {
-              pop.pause();
+              pop?.pause();
               resolve();
             }
           };
@@ -205,7 +236,7 @@ export default function TikTokScreen({
 
   const saves = Math.round(likes * 0.5);
   const shares = Math.round(likes * 0.05);
-  const visibleComments = comments.slice(-MAX_VISIBLE_COMMENTS);
+  const visibleComments = comments.slice(-maxComments);
 
   return (
     <div className="relative h-full w-full overflow-hidden bg-black text-white">
@@ -247,6 +278,33 @@ export default function TikTokScreen({
           <div className="absolute inset-0 bg-[radial-gradient(120%_80%_at_45%_35%,#3a3230_0%,#1a1614_50%,#0a0908_100%)]" />
         )}
       </div>
+
+      {/* Live reactions streaming up the right edge. Behind the action rail
+          so the counts stay readable through them. */}
+      {reactions?.length ? (
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-y-0 right-0 z-10 w-[380px] overflow-hidden"
+        >
+          {FLOATERS.map((floater, index) => (
+            <span
+              key={index}
+              className="absolute bottom-[-160px] select-none drop-shadow-[0_2px_10px_rgba(0,0,0,0.35)]"
+              style={
+                {
+                  right: floater.right,
+                  fontSize: floater.size,
+                  "--drift": `${floater.drift}px`,
+                  animation: `tiktok-float ${floater.duration}s ease-in ${floater.delay}s infinite`,
+                  animationPlayState: autoStart ? "running" : "paused",
+                } as React.CSSProperties
+              }
+            >
+              {reactions[index % reactions.length]}
+            </span>
+          ))}
+        </div>
+      ) : null}
 
       {/* Top tabs — pushed clear of the phone's overlay status bar */}
       <div className="absolute inset-x-0 top-0 z-20 flex items-center justify-center gap-6 px-5 pt-11 md:pt-14">
@@ -296,10 +354,6 @@ export default function TikTokScreen({
           icon={<Bookmark className="h-14 w-14" fill="white" strokeWidth={0} />}
           label={formatCount(saves)}
         />
-        <RailAction
-          icon={<Share2 className="h-14 w-14" fill="white" strokeWidth={0} />}
-          label={formatCount(shares)}
-        />
 
         {/* Spinning album art */}
         <span className="mt-2 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-[#5d4037] to-[#212121] ring-[3px] ring-[#2a2a2a]">
@@ -311,13 +365,22 @@ export default function TikTokScreen({
           flex column so a long caption pushes the comments up instead of
           overlapping them. */}
       <div className="absolute bottom-[96px] left-5 right-32 top-[20%] z-20 flex flex-col justify-end gap-3">
-        {/* Comments */}
-        <div className="flex min-h-0 flex-1 flex-col justify-end gap-4 overflow-hidden">
+        {/* Comments. One zoom scales the boxes, their text and their padding
+            together, so fewer and larger reads the same as many and small. */}
+        <div
+          className="flex min-h-0 flex-1 flex-col justify-end gap-4 overflow-hidden"
+          style={commentScale === 1 ? undefined : { zoom: commentScale }}
+        >
           {visibleComments.map((comment, index) => (
             <div
               key={`${comment.author}-${index}`}
               className="w-fit max-w-full rounded-2xl bg-black/50 px-7 py-4 text-[46px] font-bold leading-snug backdrop-blur-sm"
-              style={{ animation: "tiktok-comment-in 0.5s ease-out" }}
+              // Grows out of nothing at the bottom of the stack, which eases
+              // everything above it up the screen rather than jumping.
+              style={{
+                animation:
+                  "tiktok-comment-in 0.9s cubic-bezier(0.16, 1, 0.3, 1)",
+              }}
             >
               <span className="font-semibold text-white/70">
                 @{comment.author}
@@ -339,12 +402,7 @@ export default function TikTokScreen({
               {caption}
             </div>
           ) : null}
-          <div className="mt-1 flex items-center gap-3 text-[24px] font-medium">
-            <Music2 className="h-6 w-6 shrink-0" fill="white" strokeWidth={0} />
-            <span className="truncate">
-              Contains: original sound — {author}
-            </span>
-          </div>
+          
         </div>
       </div>
 

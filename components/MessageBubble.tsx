@@ -236,8 +236,9 @@ function Meta({
     trailing: "ml-4 inline-block h-[28px] translate-y-[6px] align-bottom",
   }[variant];
 
-  // Once the focus beat lands, the whole line breathes so the eye goes to it.
-  const breathing = variant === "pinned" && prefixShown && Boolean(prefix);
+  // Once the focus beat lands, the line glows so the eye goes to it. A label
+  // is optional — the time alone is enough to carry the beat.
+  const breathing = variant === "pinned" && prefixShown;
 
   return (
     <span
@@ -245,7 +246,7 @@ function Meta({
       className={`select-none whitespace-nowrap text-[24px] font-semibold leading-[28px] text-[#667781] ${placement}`}
       style={
         breathing
-          ? { animation: "wa-meta-breathe 2.6s ease-in-out infinite" }
+          ? { animation: "wa-meta-glow 2.6s ease-in-out infinite" }
           : undefined
       }
     >

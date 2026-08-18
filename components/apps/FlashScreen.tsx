@@ -7,6 +7,10 @@ export type FlashScreenProps = {
   text: string;
   /** Beat of black before it appears, ms. */
   delay?: number;
+  /** Type size in px. */
+  size?: number;
+  /** How long it is held before the scene reports itself done, ms. */
+  hold?: number;
   autoStart?: boolean;
   /** Called once the line has arrived and been held. */
   onFinished?: () => void;
@@ -16,7 +20,7 @@ export type FlashScreenProps = {
 const REVEAL_MS = 3000;
 /** The slow drift afterwards, so the frame never quite settles. */
 const DRIFT_MS = 12000;
-/** How long it is held before the scene calls itself done. */
+/** Default hold before the scene calls itself done. */
 const HOLD_MS = 4000;
 
 /**
@@ -27,6 +31,8 @@ const HOLD_MS = 4000;
 export default function FlashScreen({
   text,
   delay = 900,
+  size = 96,
+  hold = HOLD_MS,
   autoStart = false,
   onFinished,
 }: FlashScreenProps) {
@@ -44,23 +50,20 @@ export default function FlashScreen({
     const timers = [
       setTimeout(() => setShown(true), delay),
       setTimeout(() => setDrifting(true), delay + REVEAL_MS),
-      setTimeout(
-        () => onFinishedRef.current?.(),
-        delay + REVEAL_MS + HOLD_MS,
-      ),
+      setTimeout(() => onFinishedRef.current?.(), delay + REVEAL_MS + hold),
     ];
 
     return () => {
       for (const timer of timers) clearTimeout(timer);
     };
-  }, [autoStart, delay]);
+  }, [autoStart, delay, hold]);
 
   return (
     <div className="flex h-full w-full items-center justify-center overflow-hidden bg-black px-24">
       <p
         className="max-w-[1500px] text-center font-semibold leading-[1.3] text-white"
         style={{
-          fontSize: 96,
+          fontSize: size,
           opacity: shown ? 1 : 0,
           transform: `scale(${drifting ? 1.07 : shown ? 1 : 0.84})`,
           transitionProperty: "opacity, transform",

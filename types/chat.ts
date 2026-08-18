@@ -34,6 +34,13 @@ export type ChatEvent =
       /** Leave the draft sitting in the input instead of erasing it. */
       keepDraft?: boolean;
       /**
+       * Push the view in on the message box before this draft is typed, and
+       * hold it there. The view eases back out once the owner finally sends
+       * something — so the room watches her write, and only then sees where
+       * it landed. Consecutive zoomed drafts stay inside the one push-in.
+       */
+      zoom?: boolean;
+      /**
        * Holding the mic rather than typing — the bubble shows a pulsing mic
        * and the header reads "recording audio…".
        */

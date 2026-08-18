@@ -54,6 +54,17 @@ const TONE_SRC = "/whatsapp.mp3";
 /** Send-woosh for the phone owner's own outgoing messages. */
 const SENT_TONE_SRC = "/sent.mp3";
 
+/**
+ * The panel's own transition duration, in ms. Keep in sync with the
+ * `duration-[2600ms]` class on the section — the engine waits this long for
+ * a push-in to settle before letting anything else happen.
+ */
+const PANEL_EASE_MS = 2600;
+
+/** How far in the view moves on a `zoom` draft, and the gap left at its left. */
+const DRAFT_ZOOM_SCALE = 1.9;
+const DRAFT_ZOOM_MARGIN = 110;
+
 /** Breath between a voice note finishing and the next message starting. */
 const VOICE_TAIL_MS = 700;
 /** Assumed length when a voice note's metadata never arrives. */
@@ -259,6 +270,14 @@ export default function ChatPanel({
   /** null = not started; a number identifies the current playback run. */
   const [runId, setRunId] = useState<number | null>(autoStart ? 1 : null);
   const [finished, setFinished] = useState(false);
+  /** The focus beat's transform, fitting one bubble to the screen. */
+  const [focusTransform, setFocusTransform] = useState<string | null>(null);
+  /**
+   * A push-in on the message box. Moves the whole panel, not just the column,
+   * and the playback engine drives it too — so it lives up here with the rest
+   * of the run's state.
+   */
+  const [panelTransform, setPanelTransform] = useState<string | null>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
   const columnRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLElement>(null);
@@ -269,6 +288,31 @@ export default function ChatPanel({
   const toneRef = useRef<HTMLAudioElement | null>(null);
   const sentToneRef = useRef<HTMLAudioElement | null>(null);
   const keyClickRef = useRef<KeyClick | null>(null);
+
+  /**
+   * The transform that closes the view in on the message box. The whole panel
+   * moves, so it reads as a camera pushing in on the phone rather than one
+   * element growing. Anchors on where the text starts, not the middle of a
+   * full-width bar — centring that would push the words off the left edge.
+   * Only valid to call while the panel is untransformed.
+   */
+  const composerPushIn = useCallback((scale: number, margin: number) => {
+    const panel = panelRef.current;
+    const bar = inputBarRef.current;
+    const field = inputFieldRef.current;
+    if (!panel || !bar || !field) return null;
+
+    const view = panel.getBoundingClientRect();
+    const barBox = bar.getBoundingClientRect();
+    const fieldBox = field.getBoundingClientRect();
+
+    const startX = fieldBox.left - view.left;
+    const middleY = barBox.top + barBox.height / 2 - view.top;
+
+    return `translate(${margin - scale * startX}px, ${
+      view.height / 2 - scale * middleY
+    }px) scale(${scale})`;
+  }, []);
 
   /** Plays a tone from the given ref/src pair, restarting it if still playing. */
   const playFrom = useCallback(
@@ -367,11 +411,39 @@ export default function ChatPanel({
       setTypingIsVoice(false);
       setDraft("");
       setFinished(false);
+      setPanelTransform(null);
+
+      // True while the view is held in on the message box by a `zoom` draft.
+      let pushedIn = false;
+      /** Eases the view back out and waits for the move to land. */
+      const pullOut = async () => {
+        if (!pushedIn) return true;
+        pushedIn = false;
+        setPanelTransform(null);
+        await wait(PANEL_EASE_MS, false);
+        return !cancelled;
+      };
 
       for (const event of script) {
         if (cancelled) return;
 
         if (event.type === "typing") {
+          // Close in before a word is written, and let the move settle so the
+          // room isn't reading a target that is still moving. A run of zoomed
+          // drafts shares the one push-in; anything else lets the view go.
+          if (event.zoom && isSelf(event.sender)) {
+            if (!pushedIn) {
+              pushedIn = true;
+              setPanelTransform(
+                composerPushIn(DRAFT_ZOOM_SCALE, DRAFT_ZOOM_MARGIN),
+              );
+              await wait(PANEL_EASE_MS, false);
+              if (cancelled) return;
+            }
+          } else if (!(await pullOut())) {
+            return;
+          }
+
           // The phone's owner types into the input box, not a bubble.
           if (isSelf(event.sender)) {
             const text = event.draft ?? "";
@@ -467,6 +539,10 @@ export default function ChatPanel({
             return [...previous, landed];
           });
 
+          // She has sent it. Ease back out, so the pull-out is what reveals
+          // where the words landed.
+          if (!(await pullOut())) return;
+
           // A voice note plays as it lands: hold the script until it has
           // finished, so nobody starts typing over the top of it.
           if (event.audio) {
@@ -513,6 +589,7 @@ export default function ChatPanel({
     playTone,
     playSentTone,
     playKeyTick,
+    composerPushIn,
   ]);
 
   /* ------------------------------ flashback ------------------------------ */
@@ -531,11 +608,6 @@ export default function ChatPanel({
   }, [flashback, runId]);
 
   /* ------------------------------ focus beat ----------------------------- */
-  // The transform that fits one bubble to the screen. Null until measured.
-  const [focusTransform, setFocusTransform] = useState<string | null>(null);
-  /** The composer beat pushes the whole panel in, not just the column. */
-  const [panelTransform, setPanelTransform] = useState<string | null>(null);
-
   // Read-through: crawl the conversation from the top at a constant rate, so
   // the room gets to every message before the view closes in on one of them.
   useEffect(() => {
@@ -545,49 +617,44 @@ export default function ChatPanel({
     const body = bodyRef.current;
     if (!body) return;
 
+    // Sit on the top of the conversation first, so the room settles into the
+    // scene before anything starts moving.
     body.scrollTop = 0;
     let frame = 0;
-    const startedAt = performance.now();
 
-    const step = (now: number) => {
-      const distance = body.scrollHeight - body.clientHeight;
-      const progress = Math.min(1, (now - startedAt) / readMs);
-      body.scrollTop = distance * progress;
-      if (progress < 1) frame = requestAnimationFrame(step);
+    const begin = setTimeout(() => {
+      const startedAt = performance.now();
+
+      const step = (now: number) => {
+        const distance = body.scrollHeight - body.clientHeight;
+        const progress = Math.min(1, (now - startedAt) / readMs);
+        body.scrollTop = distance * progress;
+        if (progress < 1) frame = requestAnimationFrame(step);
+      };
+      frame = requestAnimationFrame(step);
+    }, focus.scrollDelay ?? 0);
+
+    return () => {
+      clearTimeout(begin);
+      cancelAnimationFrame(frame);
     };
-    frame = requestAnimationFrame(step);
-
-    return () => cancelAnimationFrame(frame);
   }, [focus, runId, paused]);
 
   useEffect(() => {
     if (!focus || runId === null || paused) return;
 
+    const startAt =
+      (focus.scrollDelay ?? 0) + (focus.scrollMs ?? 0) + (focus.delay ?? 2500);
+
     const timer = setTimeout(() => {
-      // No message named: push in on the box she is typing into. The whole
-      // panel moves, so it reads as a camera closing on the phone rather
-      // than one element growing.
+      // No message named: push in on the box she is typing into, and stay
+      // there — this is the end-of-scene beat, nothing follows it.
       if (!focus.messageId) {
-        const panel = panelRef.current;
-        const bar = inputBarRef.current;
-        const field = inputFieldRef.current;
-        if (!panel || !bar || !field) return;
-
-        const view = panel.getBoundingClientRect();
-        const barBox = bar.getBoundingClientRect();
-        const fieldBox = field.getBoundingClientRect();
-
-        // Anchor on where the text starts, not the middle of a full-width
-        // bar — centring that would push the words off the left edge.
-        const scale = focus.maxScale ?? 1.9;
-        const margin = focus.margin ?? 110;
-        const startX = fieldBox.left - view.left;
-        const middleY = barBox.top + barBox.height / 2 - view.top;
-
         setPanelTransform(
-          `translate(${margin - scale * startX}px, ${
-            view.height / 2 - scale * middleY
-          }px) scale(${scale})`,
+          composerPushIn(
+            focus.maxScale ?? DRAFT_ZOOM_SCALE,
+            focus.margin ?? DRAFT_ZOOM_MARGIN,
+          ),
         );
         return;
       }
@@ -622,10 +689,10 @@ export default function ChatPanel({
       const y = view.top + view.height / 2 - col.top - scale * centreY;
 
       setFocusTransform(`translate(${x}px, ${y}px) scale(${scale})`);
-    }, (focus.scrollMs ?? 0) + (focus.delay ?? 2500));
+    }, startAt);
 
     return () => clearTimeout(timer);
-  }, [focus, runId, paused]);
+  }, [focus, runId, paused, composerPushIn]);
 
   /* ----------------------------- auto-scroll ----------------------------- */
   useEffect(() => {
@@ -674,7 +741,10 @@ export default function ChatPanel({
         <div className="min-w-0 flex-1">
           <div className="truncate text-[36px] font-bold">{chat?.name}</div>
           {currentlyTyping ? (
+            // In a group WhatsApp names whoever is typing, so the room can
+            // see who is about to speak before a word of it lands.
             <div className="truncate text-[24px] font-semibold text-[#00a884]">
+              {chat?.isGroup ? `${currentlyTyping} ` : ""}
               {typingIsVoice ? "recording audio…" : "typing…"}
             </div>
           ) : headerStatus ? (
@@ -732,56 +802,69 @@ export default function ChatPanel({
           </div>
         ) : null}
 
-        {/* One zoom on the column scales bubbles, text and padding together,
-            and keeps the 72% max-width proportional. The transform on top of
-            it is the focus beat pushing in on a single message. */}
+        {/* Two nested elements on purpose. The inner one carries the zoom,
+            which scales bubbles, text and padding together and keeps the 72%
+            max-width proportional. The outer one carries the focus beat's
+            push-in — because a translate written in px *inside* a zoomed box
+            is itself multiplied by that zoom, so a move measured in screen
+            pixels would overshoot by exactly textScale. Kept apart, the
+            measurement and the move agree at any scale. */}
         <div
-          ref={columnRef}
-          className="flex flex-col transition-transform duration-[2200ms] ease-in-out"
+          className="transition-transform duration-[2200ms] ease-in-out"
           style={{
-            ...(textScale === 1 ? {} : { zoom: textScale }),
             transformOrigin: "0 0",
             transform: focusTransform ?? "translate(0px, 0px) scale(1)",
           }}
         >
-          {shownMessages.map((message) => (
-            <MessageBubble
-              key={message.id}
-              sender={isSelfSender(message.sender) ? "me" : message.sender}
-              text={message.text}
-              image={message.image}
-              imageWidth={message.imageWidth}
-              imageAspect={message.imageAspect}
-              audio={message.audio}
-              // A flashback's notes are already old news — they don't replay.
-              audioAutoPlay={!instant}
-              paused={paused}
-              domId={message.id}
-              metaPrefix={
-                focus?.messageId === message.id ? focus.label : undefined
-              }
-              metaPrefixShown={focusTransform !== null}
-              timestamp={message.timestamp}
-              isDeleted={message.isDeleted}
-              isFirstInGroup={message.isFirstInGroup}
-              senderName={
-                chat?.isGroup && !isSelfSender(message.sender)
-                  ? message.sender
-                  : undefined
-              }
-              senderColor={resolveSenderColor(message.sender, senderColors)}
-              status="read"
-            />
-          ))}
+          <div
+            ref={columnRef}
+            className="flex flex-col"
+            style={textScale === 1 ? undefined : { zoom: textScale }}
+          >
+            {shownMessages.map((message) => (
+              <MessageBubble
+                key={message.id}
+                sender={isSelfSender(message.sender) ? "me" : message.sender}
+                text={message.text}
+                image={message.image}
+                imageWidth={message.imageWidth}
+                imageAspect={message.imageAspect}
+                audio={message.audio}
+                // A flashback's notes are already old news — they don't
+                // replay.
+                audioAutoPlay={!instant}
+                paused={paused}
+                domId={message.id}
+                metaPrefix={
+                  focus?.messageId === message.id ? focus.label : undefined
+                }
+                // Only the focused message glows — everything else keeps its
+                // ordinary grey timestamp.
+                metaPrefixShown={
+                  focus?.messageId === message.id && focusTransform !== null
+                }
+                timestamp={message.timestamp}
+                isDeleted={message.isDeleted}
+                isFirstInGroup={message.isFirstInGroup}
+                senderName={
+                  chat?.isGroup && !isSelfSender(message.sender)
+                    ? message.sender
+                    : undefined
+                }
+                senderColor={resolveSenderColor(message.sender, senderColors)}
+                status="read"
+              />
+            ))}
 
-          {currentlyTyping ? (
-            <TypingIndicator
-              isFirstInGroup={typingIsFirstInGroup}
-              senderName={chat?.isGroup ? currentlyTyping : undefined}
-              senderColor={resolveSenderColor(currentlyTyping, senderColors)}
-              voice={typingIsVoice}
-            />
-          ) : null}
+            {currentlyTyping ? (
+              <TypingIndicator
+                isFirstInGroup={typingIsFirstInGroup}
+                senderName={chat?.isGroup ? currentlyTyping : undefined}
+                senderColor={resolveSenderColor(currentlyTyping, senderColors)}
+                voice={typingIsVoice}
+              />
+            ) : null}
+          </div>
         </div>
       </div>
 

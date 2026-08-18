@@ -91,6 +91,8 @@ export type FocusBeat = {
    * screen simply holds for the same length of time.
    */
   scrollMs?: number;
+  /** Beat held on the top of the chat before that crawl starts, ms. */
+  scrollDelay?: number;
   /** Hold after the read-through, before the move starts, ms. Default 2500. */
   delay?: number;
   /** Ceiling on the fitted scale, so a short bubble can't fill the wall. */
@@ -256,8 +258,20 @@ export type Scene =
       username?: string;
       /** Clip playing behind the UI (path under /public), e.g. "/maya.mp4". */
       video?: string;
-      /** Pop heard while the like counter climbs. Defaults to "/likes.mp3". */
+      /**
+       * Pop heard while the like counter climbs. Defaults to "/likes.mp3";
+       * an empty string plays nothing.
+       */
       likesSound?: string;
+      /** Live reactions floating up the right edge, e.g. ["❤️", "🔥"]. */
+      reactions?: string[];
+      /**
+       * How many comments stay on screen at once before the oldest drops off.
+       * Defaults to 5; fewer means each one can be bigger.
+       */
+      maxComments?: number;
+      /** Scales the comment stack — boxes, text and padding as one. */
+      commentScale?: number;
     })
   | (SceneBase & {
       appType: "notes";
@@ -277,4 +291,8 @@ export type Scene =
       text: string;
       /** Beat of black before the line appears, ms. */
       delay?: number;
+      /** Type size in px. Defaults to 96 — a title card wants more. */
+      size?: number;
+      /** How long it is held before the scene reports itself done, ms. */
+      hold?: number;
     });
