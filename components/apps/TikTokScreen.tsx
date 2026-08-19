@@ -21,6 +21,12 @@ export type TikTokScreenProps = {
   video?: string;
   /** Pop heard while the like counter climbs. Empty string plays nothing. */
   likesSound?: string;
+  /**
+   * One track under the whole scene (path under /public). It runs unbroken
+   * across every swipe, and the clips themselves play silent — the way a
+   * feed sounds when one song carries post after post.
+   */
+  soundtrack?: string;
   /** Live reactions floating up the right edge, e.g. ["❤️", "🔥"]. */
   reactions?: string[];
   /** How many comments stay on screen before the oldest drops off. */
@@ -79,6 +85,7 @@ export default function TikTokScreen({
   username = "maya.k",
   video,
   likesSound = "/likes.mp3",
+  soundtrack,
   reactions,
   maxComments = MAX_VISIBLE_COMMENTS,
   commentScale = 1,
@@ -95,11 +102,17 @@ export default function TikTokScreen({
   const [swipe, setSwipe] = useState(0);
   const onFinishedRef = useRef(onFinished);
   const likesSoundRef = useRef<HTMLAudioElement | null>(null);
+  const soundtrackRef = useRef<HTMLAudioElement | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const backdropRef = useRef<HTMLVideoElement>(null);
 
   /* The clip runs with the scene: from the top when it starts, stopped dead
-   * when the curtain shuts. */
+   * when the curtain shuts.
+   *
+   * Keyed on the swipe counter, not just the clip. A swipe remounts the video
+   * element, and two posts can name the same file — without the counter in
+   * here, that remount would leave a fresh element sitting on its first frame
+   * with nothing ever calling play() on it. */
   useEffect(() => {
     const main = videoRef.current;
     const backdrop = backdropRef.current;
@@ -122,7 +135,29 @@ export default function TikTokScreen({
       void main.play().catch(() => {});
     });
     void backdrop?.play().catch(() => {});
-  }, [autoStart, clip]);
+  }, [autoStart, clip, swipe]);
+
+  /*
+   * The track under the scene. Its deps deliberately exclude the clip: a
+   * swipe must not restart it, so the song runs on unbroken while the videos
+   * change underneath it.
+   */
+  useEffect(() => {
+    if (!soundtrack) return;
+
+    const track = (soundtrackRef.current ??= new Audio(soundtrack));
+    track.loop = true;
+
+    if (!autoStart) {
+      track.pause();
+      return;
+    }
+
+    track.currentTime = 0;
+    void track.play().catch(() => {});
+
+    return () => track.pause();
+  }, [autoStart, soundtrack]);
 
   useEffect(() => {
     onFinishedRef.current = onFinished;
@@ -259,7 +294,6 @@ export default function TikTokScreen({
               ref={backdropRef}
               src={clip}
               muted
-              loop
               playsInline
               preload="auto"
               aria-hidden
@@ -268,9 +302,10 @@ export default function TikTokScreen({
             <video
               ref={videoRef}
               src={clip}
-              loop
               playsInline
               preload="auto"
+              // Silent when a soundtrack is carrying the scene.
+              muted={Boolean(soundtrack)}
               className="absolute inset-0 h-full w-full object-contain"
             />
           </>

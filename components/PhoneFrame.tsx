@@ -236,6 +236,7 @@ function Screen({
           username={scene.username}
           video={scene.video}
           likesSound={scene.likesSound}
+          soundtrack={scene.soundtrack}
           reactions={scene.reactions}
           maxComments={scene.maxComments}
           commentScale={scene.commentScale}

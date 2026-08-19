@@ -277,6 +277,11 @@ export type Scene =
        * an empty string plays nothing.
        */
       likesSound?: string;
+      /**
+       * One track under the whole scene, running unbroken across every swipe.
+       * The clips play silent while it does.
+       */
+      soundtrack?: string;
       /** Live reactions floating up the right edge, e.g. ["❤️", "🔥"]. */
       reactions?: string[];
       /**

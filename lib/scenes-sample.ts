@@ -471,37 +471,49 @@ const scene7Whatsapp: ChatEvent[] = [
  * until the real footage lands. Swap the `video` paths and nothing else
  * needs to change. */
 const scene8Tiktok: TikTokEvent[] = [
+  // Nothing loops: each clip plays once and the next post scrolls in as it
+  // ends. The holds are the clip's own length plus a breath, so there is no
+  // dead frozen frame between posts.
   {
     type: "swipe",
-    video: "/maya.mp4",
+    video: "/vid1.mp4",
     username: "maya.k",
     caption: "when the teacher says pop quiz 😭😭",
     likes: 812,
-    duration: 6000,
+    duration: 7100,
   },
   {
     type: "swipe",
-    video: "/maya.mp4",
+    video: "/vid2.mp4",
     username: "tash.k",
     caption: "BEST CLASS EVER!! ❤️❤️",
     likes: 1240,
-    duration: 6000,
+    duration: 6900,
   },
   {
     type: "swipe",
-    video: "/maya.mp4",
+    video: "/vid3.mp4",
     username: "jay_official",
     caption: "party at Maya's 🎉🎉",
     likes: 2430,
-    duration: 6500,
+    duration: 6300,
   },
   {
     type: "swipe",
-    video: "/maya.mp4",
-    username: "maya.k",
+    video: "/vid4.mp4",
+    username: "nia_x",
     caption: "us 😂😂",
     likes: 640,
-    duration: 7000,
+    duration: 3100,
+  },
+  // The long one. She stops scrolling and just watches.
+  {
+    type: "swipe",
+    video: "/vid5.mp4",
+    username: "maya.k",
+    caption: "still my favourite ❤️",
+    likes: 1890,
+    duration: 12000,
   },
 ];
 
@@ -998,7 +1010,10 @@ export const scenesSample: Scene[] = [
     appType: "tiktok",
     label: "11 · 11:43 PM — Maya scrolls the feed",
     username: "maya.k",
-    video: "/maya.mp4",
+    // One track carries the whole scene. The clips are silent under it, and
+    // it does not restart when the feed swipes on.
+    soundtrack: "/reel.mp3",
+    video: "/vid1.mp4",
     events: scene8Tiktok,
   },
   titleCard("title-4", 12),
