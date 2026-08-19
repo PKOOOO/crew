@@ -8,22 +8,28 @@ import type {
 } from "@/types/scene";
 
 /*
- * Scene order follows the printed script, convo1 → convo11:
+ * Running order, as set from /control:
  *   1  THE CREW — BEST CLASS EVER                  convo1
  *   2  THE CREW — party planning + memes           convo2
- *   3  the funny TikTok — likes flood in           convo4
- *   4  the secret account (Notes)                  convo4
- *   5  the page in the bin — Auntie unfolds it
- *   6  Maya types, never sends                     convo5
- *   7  THE CREW interrupts — "You're famous"       convo6
- *   8  11:43 PM — Maya scrolls the feed
- *   9  the pivotal night chat                      convo7
- *   10 Ms. Mwangi / Dad / Mom — never opened       convo8
- *   11 title card — READ 11:43 PM
- *   12 aftermath — RIP Maya                        convo9
- *   13 the chat sits in dead silence (flashback)   convo10
- *   14 THE CREW — would you notice?
- *   15 the unsent drafts                           convo11
+ *   3  the classroom drawing
+ *   4  TITLE — READ 11:43 PM
+ *   5  the funny TikTok — likes flood in           convo4
+ *   6  the page in the bin — Auntie unfolds it
+ *   7  Maya types, never sends                     convo5
+ *   8  TITLE — READ 11:43 PM
+ *   9  THE CREW interrupts — "You're famous"       convo6
+ *   10 TITLE — READ 11:43 PM
+ *   11 11:43 PM — Maya scrolls the feed
+ *   12 TITLE — READ 11:43 PM
+ *   13 the pivotal night chat                      convo7
+ *   14 Ms. Mwangi / Dad / Mom — never opened       convo8
+ *   15 TITLE — READ 11:43 PM
+ *   16 aftermath — RIP Maya                        convo9
+ *   17 the chat sits in dead silence (flashback)   convo10
+ *   18 the unsent drafts                           convo11
+ *   19 THE CREW — would you notice?
+ *
+ * Benched: the secret account (Notes) — see benchedScenes at the foot.
  */
 
 /* 1 — The group lights up about the school day. Everyone has something to
@@ -879,6 +885,23 @@ const scene15Notes: NotesEvent[] = [
   { type: "pause", duration: 6000 },
 ];
 
+/**
+ * The play's title, flashed on black. It recurs through the show, so it is
+ * built here rather than written out five times.
+ */
+function titleCard(id: string, position: number): Scene {
+  return {
+    id,
+    appType: "flash",
+    label: `${position} · TITLE — READ 11:43 PM`,
+    text: "READ 11:43 PM",
+    // A long beat of black first, then it holds, so the house can sit in it.
+    delay: 2000,
+    size: 190,
+    hold: 9000,
+  };
+}
+
 export const scenesSample: Scene[] = [
   {
     id: "scene-1",
@@ -897,84 +920,96 @@ export const scenesSample: Scene[] = [
     appType: "whatsapp",
     label: "2 · THE CREW — party Saturday + memes",
     chatName: "THE CREW 🔥",
-    // Same treatment as scenes 1 and 7 — two cards fill the screen at a time.
-    // The stickers carry their own imageWidth so the zoom doesn't blow them
-    // past the bubble's max-width.
+    // Same treatment as scene 1 — two cards fill the screen at a time. The
+    // stickers carry their own imageWidth so the zoom doesn't blow them past
+    // the bubble's max-width.
     textScale: 2.2,
     events: scene2Whatsapp,
   },
   {
+    id: "scene-drawing",
+    // A drawing, not a phone — no status bar, no clock.
+    appType: "image",
+    label: "3 · The classroom drawing — DON'T FORGET TO SMILE",
+    src: "/drawing.jpeg",
+    delay: 2000,
+    hold: 12000,
+  },
+  titleCard("title-1", 4),
+  {
     id: "scene-3",
     statusTime: "21:15",
     appType: "tiktok",
-    label: "3 · TikTok — 100… 300… 800 likes",
+    label: "5 · TikTok — 100… 300… 800 likes",
     username: "maya.k",
     // No pops here — the video carries its own sound.
     likesSound: "",
     reactions: ["❤️", "🔥", "😍", "❤️", "🔥", "💖"],
-    // Same size as the aftermath in scene 12. Three at a time rather than
-    // five — at this scale that is all the screen holds.
+    // Same size as the aftermath. Three at a time rather than five — at this
+    // scale that is all the screen holds.
     maxComments: 3,
     commentScale: 1.4,
     video: "/maya.mp4",
     events: scene3Tiktok,
   },
   {
-    id: "scene-4",
-    statusTime: "23:31",
-    appType: "notes",
-    label: "4 · Notes — the secret account",
-    dark: true,
-    notes: mayaNotes,
-    noteTitle: "private",
-    noteDate: "19 July 2026 at 23:31",
-    events: scene4Notes,
-  },
-  {
     id: "scene-5",
     appType: "flash",
-    label: "5 · The page in the bin — Auntie unfolds it",
+    label: "6 · The page in the bin — Auntie unfolds it",
     text: "I don't know how much longer I can pretend.",
   },
   {
     id: "scene-6",
-    statusTime: "23:35",
+    // Matches the 11:30 PM sitting at the end of her draft.
+    statusTime: "23:30",
     appType: "whatsapp",
-    label: "6 · Maya types it, never sends",
+    label: "7 · Maya types it, never sends",
     chatName: "THE CREW 🔥",
-    // Nothing is ever sent, so the beat closes in on the box itself — the
-    // room watches the words appear in close-up.
-    focus: { delay: 1500, maxScale: 1.9 },
+    // Nothing is ever sent, so the hour has nowhere else to appear: it sits
+    // at the end of what she wrote.
+    composerTime: "11:30 PM",
+    // The beat closes in on the box itself — the room watches the words
+    // appear in close-up — then goes the rest of the way in on the 11:30,
+    // which glows.
+    focus: {
+      delay: 1500,
+      maxScale: 1.9,
+      timeDelay: 2500,
+      timeScale: 3.4,
+    },
     events: scene6Whatsapp,
   },
+  titleCard("title-2", 8),
   {
     id: "scene-7",
     statusTime: "13:12",
     appType: "whatsapp",
-    label: "7 · THE CREW — You're famous MAYA!",
+    label: "9 · THE CREW — You're famous MAYA!",
     chatName: "THE CREW 🔥",
     // Big enough that only two cards fit the screen at once: Jay and Kevin
     // fill it, then Tash's arrival scrolls Jay off the top.
     textScale: 2.2,
     events: scene7Whatsapp,
   },
+  titleCard("title-3", 10),
   {
     id: "scene-8",
     statusTime: "23:43",
     appType: "tiktok",
-    label: "8 · 11:43 PM — Maya scrolls the feed",
+    label: "11 · 11:43 PM — Maya scrolls the feed",
     username: "maya.k",
     video: "/maya.mp4",
     events: scene8Tiktok,
   },
+  titleCard("title-4", 12),
   {
     id: "scene-9",
     statusTime: "23:31",
     appType: "whatsapp",
-    label: "9 · The pivotal night chat (11:31 → 11:43 PM)",
+    label: "13 · The pivotal night chat (11:31 → 11:43 PM)",
     chatName: "THE CREW 🔥",
-    // Two cards at a time, as in scenes 1, 2 and 7 — so Maya's line and the
-    // meme that answers it can't share the screen with anything else.
+    // Two cards at a time, so Maya's line and the meme that answers it can't
+    // share the screen with anything else.
     textScale: 2.2,
     events: scene9Whatsapp,
   },
@@ -982,7 +1017,7 @@ export const scenesSample: Scene[] = [
     id: "scene-10",
     statusTime: "23:41",
     appType: "chatlist",
-    label: "10 · Ms. Mwangi, Dad, Mom — delivered, never opened",
+    label: "14 · Ms. Mwangi, Dad, Mom — delivered, never opened",
     pinned: {
       name: "THE CREW 🔥",
       preview: "Tash: 😂😂😂😂😂😂",
@@ -990,23 +1025,12 @@ export const scenesSample: Scene[] = [
     },
     events: scene10ChatList,
   },
-  {
-    id: "scene-11",
-    // The title card, not a phone. No status bar, no clock — the flash
-    // screen draws nothing but the line.
-    appType: "flash",
-    label: "11 · TITLE — READ 11:43 PM",
-    text: "READ 11:43 PM",
-    // A long beat of black first, then it holds, so the house can sit in it.
-    delay: 2000,
-    size: 190,
-    hold: 9000,
-  },
+  titleCard("title-5", 15),
   {
     id: "scene-12",
     statusTime: "16:20",
     appType: "tiktok",
-    label: "12 · Aftermath — RIP Maya 💔",
+    label: "16 · Aftermath — RIP Maya 💔",
     username: "school.memories",
     // The counter still climbs, but silently — nothing pops over the grief.
     likesSound: "",
@@ -1020,15 +1044,15 @@ export const scenesSample: Scene[] = [
     id: "scene-13",
     statusTime: "23:44",
     appType: "whatsapp",
-    label: "13 · The chat sits in dead silence (flashback)",
+    label: "17 · The chat sits in dead silence (flashback)",
     chatName: "THE CREW 🔥",
     instant: true,
     // Same size as the rest of the WhatsApp scenes. The read-through has more
     // ground to cover at this scale, so it is given longer below.
     textScale: 2.2,
-    // The chat crawls past top to bottom so every message is read — Leo's
+    // The chat holds at the top, crawls past so every message is read — Leo's
     // deleted box last of all — then the view closes in on the one message
-    // that mattered and names when she was last seen.
+    // that mattered and its timestamp glows.
     focus: {
       messageId: "s12-1",
       // No words beside the time — just the 11:43 PM, glowing.
@@ -1039,24 +1063,42 @@ export const scenesSample: Scene[] = [
     events: scene13Whatsapp,
   },
   {
-    id: "scene-14",
-    statusTime: "07:12",
-    appType: "whatsapp",
-    label: "14 · THE CREW — would you notice?",
-    chatName: "THE CREW 🔥",
-    // As big as the rest of the WhatsApp scenes.
-    textScale: 2.2,
-    events: scene14Whatsapp,
-  },
-  {
     id: "scene-15",
     statusTime: "23:43",
     appType: "notes",
-    label: "15 · Notes — the unsent drafts",
+    label: "18 · Notes — the unsent drafts",
     dark: true,
     notes: mayaNotes,
     noteTitle: "Maya's Diary",
     noteDate: "19 July 2026 at 23:43",
     events: scene15Notes,
+  },
+  {
+    id: "scene-14",
+    statusTime: "07:12",
+    appType: "whatsapp",
+    label: "19 · THE CREW — would you notice?",
+    chatName: "THE CREW 🔥",
+    // As big as the rest of the WhatsApp scenes.
+    textScale: 2.2,
+    events: scene14Whatsapp,
+  },
+];
+
+/**
+ * Built, but not in the running order. Kept here so the scene isn't lost —
+ * splice it back into scenesSample to put it on stage.
+ */
+export const benchedScenes: Scene[] = [
+  {
+    id: "scene-4",
+    statusTime: "23:31",
+    appType: "notes",
+    label: "Notes — the secret account",
+    dark: true,
+    notes: mayaNotes,
+    noteTitle: "private",
+    noteDate: "19 July 2026 at 23:31",
+    events: scene4Notes,
   },
 ];

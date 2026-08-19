@@ -97,6 +97,14 @@ export type FocusBeat = {
   delay?: number;
   /** Ceiling on the fitted scale, so a short bubble can't fill the wall. */
   maxScale?: number;
+  /**
+   * Composer beats only: after the first push-in settles, close the rest of
+   * the way in on the timestamp at the end of the draft, and let it glow.
+   * Scale of that second move; defaults to 3.4.
+   */
+  timeScale?: number;
+  /** Beat between the first push-in settling and that second move, ms. */
+  timeDelay?: number;
   /** Breathing room left around the bubble, px. Defaults to 90. */
   margin?: number;
 };
@@ -231,6 +239,12 @@ export type Scene =
        */
       textScale?: number;
       /**
+       * A timestamp shown at the end of the draft in the message box, e.g.
+       * "11:43 PM" — for a scene where nothing is ever sent, so no bubble
+       * ever carries the hour.
+       */
+      composerTime?: string;
+      /**
        * After the scene settles, push in on one message and let a line of
        * text fade in beside its timestamp.
        */
@@ -295,4 +309,16 @@ export type Scene =
       size?: number;
       /** How long it is held before the scene reports itself done, ms. */
       hold?: number;
+    })
+  | (SceneBase & {
+      /** One picture on a black screen — no app, no chrome. */
+      appType: "image";
+      /** Path under /public, e.g. "/classroom.jpeg". */
+      src: string;
+      /** Beat of black before it appears, ms. */
+      delay?: number;
+      /** How long it is held before the scene reports itself done, ms. */
+      hold?: number;
+      /** Optional line under the picture. */
+      caption?: string;
     });

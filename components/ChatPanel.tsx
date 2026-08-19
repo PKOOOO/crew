@@ -200,6 +200,12 @@ export type ChatPanelProps = {
    * the standard size.
    */
   textScale?: number;
+  /**
+   * A timestamp shown at the end of the draft in the message box, e.g.
+   * "11:43 PM". Nothing is sent in these scenes, so this is the only place
+   * the hour can appear — and a focus beat closes in on it.
+   */
+  composerTime?: string;
   /** Push in on one message once the scene has settled. */
   focus?: FocusBeat;
   onMessage?: (message: VisibleMessage) => void;
@@ -257,6 +263,7 @@ export default function ChatPanel({
   headerStatus,
   paused = false,
   textScale = 1,
+  composerTime,
   focus,
   onMessage,
   onFinished,
@@ -278,11 +285,14 @@ export default function ChatPanel({
    * of the run's state.
    */
   const [panelTransform, setPanelTransform] = useState<string | null>(null);
+  /** The composer's timestamp is the subject of the beat: make it glow. */
+  const [composerTimeLit, setComposerTimeLit] = useState(false);
   const bodyRef = useRef<HTMLDivElement>(null);
   const columnRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLElement>(null);
   const inputBarRef = useRef<HTMLDivElement>(null);
   const inputFieldRef = useRef<HTMLDivElement>(null);
+  const composerTimeRef = useRef<HTMLSpanElement>(null);
   const onMessageRef = useRef(onMessage);
   const onFinishedRef = useRef(onFinished);
   const toneRef = useRef<HTMLAudioElement | null>(null);
@@ -311,6 +321,42 @@ export default function ChatPanel({
 
     return `translate(${margin - scale * startX}px, ${
       view.height / 2 - scale * middleY
+    }px) scale(${scale})`;
+  }, []);
+
+  /**
+   * The transform that puts one element in the middle of the panel at the
+   * given scale.
+   *
+   * Measured from layout offsets rather than getBoundingClientRect, because
+   * this move is applied while the panel is already pushed in: a screen rect
+   * would be reading the panel's own transform back and compounding it.
+   * Offsets ignore transforms entirely, so the answer is the same whether the
+   * view has moved yet or not.
+   */
+  const centreOn = useCallback((target: HTMLElement | null, scale: number) => {
+    const panel = panelRef.current;
+    if (!panel || !target) return null;
+    if (!target.offsetWidth || !target.offsetHeight) return null;
+
+    const walk = (node: HTMLElement | null) => {
+      let x = 0;
+      let y = 0;
+      while (node) {
+        x += node.offsetLeft;
+        y += node.offsetTop;
+        node = node.offsetParent as HTMLElement | null;
+      }
+      return { x, y };
+    };
+
+    const here = walk(target);
+    const root = walk(panel);
+    const centreX = here.x - root.x + target.offsetWidth / 2;
+    const centreY = here.y - root.y + target.offsetHeight / 2;
+
+    return `translate(${panel.offsetWidth / 2 - scale * centreX}px, ${
+      panel.offsetHeight / 2 - scale * centreY
     }px) scale(${scale})`;
   }, []);
 
@@ -412,6 +458,7 @@ export default function ChatPanel({
       setDraft("");
       setFinished(false);
       setPanelTransform(null);
+      setComposerTimeLit(false);
 
       // True while the view is held in on the message box by a `zoom` draft.
       let pushedIn = false;
@@ -647,8 +694,9 @@ export default function ChatPanel({
       (focus.scrollDelay ?? 0) + (focus.scrollMs ?? 0) + (focus.delay ?? 2500);
 
     const timer = setTimeout(() => {
-      // No message named: push in on the box she is typing into, and stay
-      // there — this is the end-of-scene beat, nothing follows it.
+      // No message named: push in on the box she is typing into. The move on
+      // to the timestamp is a separate beat — it cannot be measured until she
+      // has stopped typing and the time has settled at the end of the line.
       if (!focus.messageId) {
         setPanelTransform(
           composerPushIn(
@@ -693,6 +741,25 @@ export default function ChatPanel({
 
     return () => clearTimeout(timer);
   }, [focus, runId, paused, composerPushIn]);
+
+  /*
+   * The second half of a composer beat: once she has stopped typing and the
+   * timestamp has landed at the end of her last word, close the rest of the
+   * way in on it and let it glow.
+   */
+  useEffect(() => {
+    if (!finished || paused || runId === null) return;
+    if (!focus || focus.messageId) return;
+
+    const timer = setTimeout(() => {
+      const onTime = centreOn(composerTimeRef.current, focus.timeScale ?? 3.4);
+      if (!onTime) return;
+      setPanelTransform(onTime);
+      setComposerTimeLit(true);
+    }, focus.timeDelay ?? 2000);
+
+    return () => clearTimeout(timer);
+  }, [finished, paused, runId, focus, centreOn]);
 
   /* ----------------------------- auto-scroll ----------------------------- */
   useEffect(() => {
@@ -891,6 +958,21 @@ export default function ChatPanel({
                 className="ml-[3px] inline-block h-[38px] w-[4px] translate-y-[7px] bg-[#00a884]"
                 style={{ animation: "wa-caret-blink 1.1s step-end infinite" }}
               />
+              {composerTime ? (
+                // Sits immediately after the last word she typed. It glows
+                // once the beat closes in on it.
+                <span
+                  ref={composerTimeRef}
+                  className="ml-5 whitespace-nowrap text-[30px] font-semibold text-[#667781]"
+                  style={
+                    composerTimeLit
+                      ? { animation: "wa-meta-glow 2.6s ease-in-out infinite" }
+                      : undefined
+                  }
+                >
+                  {composerTime}
+                </span>
+              ) : null}
             </span>
           ) : (
             <span className="flex items-center">

@@ -19,6 +19,8 @@ export type WhatsAppScreenProps = {
   paused?: boolean;
   /** Scales the message column — text and bubbles together. */
   textScale?: number;
+  /** Timestamp shown at the end of the draft in the message box. */
+  composerTime?: string;
   /** Push in on one message once the scene has settled. */
   focus?: FocusBeat;
   autoStart?: boolean;
@@ -39,6 +41,7 @@ export default function WhatsAppScreen({
   headerStatus,
   paused = false,
   textScale,
+  composerTime,
   focus,
   autoStart = false,
   onFinished,
@@ -85,6 +88,7 @@ export default function WhatsAppScreen({
         headerStatus={headerStatus}
         paused={paused}
         textScale={textScale}
+        composerTime={composerTime}
         focus={focus}
         onFinished={onFinished}
       />

@@ -9,6 +9,7 @@ import LockscreenScreen from "@/components/apps/LockscreenScreen";
 import GroupInfoScreen from "@/components/apps/GroupInfoScreen";
 import ChatListScreen from "@/components/apps/ChatListScreen";
 import FlashScreen from "@/components/apps/FlashScreen";
+import ImageScreen from "@/components/apps/ImageScreen";
 
 export type PhoneFrameProps = {
   scene: Scene;
@@ -71,8 +72,10 @@ export default function PhoneFrame({
   const darkStatusBar =
     overlayStatusBar || (scene.appType === "notes" && scene.dark === true);
 
-  // A flashed line is not a phone screen — no clock, no battery, just black.
-  const showStatusBar = scene.appType !== "flash";
+  // A flashed line or a held picture is not a phone screen — no clock, no
+  // battery, just black.
+  const showStatusBar =
+    scene.appType !== "flash" && scene.appType !== "image";
 
   return (
     <div
@@ -197,6 +200,7 @@ function Screen({
           instant={scene.instant}
           headerStatus={scene.headerStatus}
           textScale={scene.textScale}
+          composerTime={scene.composerTime}
           focus={scene.focus}
           autoStart={autoStart}
           // The chat latches its run at mount, so it needs telling directly.
@@ -247,6 +251,17 @@ function Screen({
           notes={scene.notes}
           noteTitle={scene.noteTitle}
           noteDate={scene.noteDate}
+          autoStart={playing}
+          onFinished={onFinished}
+        />
+      );
+    case "image":
+      return (
+        <ImageScreen
+          src={scene.src}
+          delay={scene.delay}
+          hold={scene.hold}
+          caption={scene.caption}
           autoStart={playing}
           onFinished={onFinished}
         />
