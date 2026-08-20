@@ -26,6 +26,8 @@ export type MessageBubbleProps = {
   metaPrefix?: string;
   /** The prefix reserves its space from the start and fades in when true. */
   metaPrefixShown?: boolean;
+  /** Pulse the timestamp once the beat lands. Off unless a scene asks. */
+  metaGlow?: boolean;
   timestamp: string;
   senderName?: string;
   senderColor?: string;
@@ -53,6 +55,7 @@ export default function MessageBubble({
   domId,
   metaPrefix,
   metaPrefixShown = false,
+  metaGlow = false,
   timestamp,
   senderName,
   senderColor,
@@ -136,6 +139,7 @@ export default function MessageBubble({
                       variant="reserve"
                       prefix={metaPrefix}
                       prefixShown={metaPrefixShown}
+                      glow={metaGlow}
                     />
                   </span>
                   <Meta
@@ -145,6 +149,7 @@ export default function MessageBubble({
                     variant="pinned"
                     prefix={metaPrefix}
                     prefixShown={metaPrefixShown}
+                    glow={metaGlow}
                   />
                 </div>
               ) : (
@@ -186,6 +191,7 @@ export default function MessageBubble({
                   variant="reserve"
                   prefix={metaPrefix}
                   prefixShown={metaPrefixShown}
+                  glow={metaGlow}
                 />
               </span>
               <Meta
@@ -195,6 +201,7 @@ export default function MessageBubble({
                 variant="pinned"
                 prefix={metaPrefix}
                 prefixShown={metaPrefixShown}
+                glow={metaGlow}
               />
             </div>
           )}
@@ -221,6 +228,7 @@ function Meta({
   variant,
   prefix,
   prefixShown = false,
+  glow = false,
 }: {
   timestamp: string;
   outgoing: boolean;
@@ -229,6 +237,8 @@ function Meta({
   /** Sits left of the timestamp; holds its space before it fades in. */
   prefix?: string;
   prefixShown?: boolean;
+  /** Pulse the line once the beat has landed. */
+  glow?: boolean;
 }) {
   const placement = {
     pinned: "absolute bottom-0 right-0",
@@ -236,9 +246,10 @@ function Meta({
     trailing: "ml-4 inline-block h-[28px] translate-y-[6px] align-bottom",
   }[variant];
 
-  // Once the focus beat lands, the line glows so the eye goes to it. A label
-  // is optional — the time alone is enough to carry the beat.
-  const breathing = variant === "pinned" && prefixShown;
+  // Once the focus beat lands, the line can glow so the eye goes to it —
+  // only when the scene asks for it. A label is optional; the time alone is
+  // enough to carry the beat.
+  const breathing = glow && variant === "pinned" && prefixShown;
 
   return (
     <span

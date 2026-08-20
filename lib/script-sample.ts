@@ -26,7 +26,7 @@ export const groupScriptSample: ChatEvent[] = [
   {
     type: "message",
     id: "g3",
-    sender: "Kevin",
+    sender: "Kevina",
     text: "Parents rich rich 😂",
     delay: 1200,
   },
@@ -55,7 +55,7 @@ export const groupScriptSample: ChatEvent[] = [
   {
     type: "message",
     id: "g7",
-    sender: "Kevin",
+    sender: "Kevina",
     text: "bring the speaker like last time 😂",
     delay: 1100,
   },

@@ -34,6 +34,13 @@ export type ChatEvent =
       /** Leave the draft sitting in the input instead of erasing it. */
       keepDraft?: boolean;
       /**
+       * Erase what is already sitting in the box rather than typing anything.
+       * `draft` says what is there to be taken away, and `duration` is how
+       * long it takes to go. For a message written, looked at, and then
+       * unwritten in a separate beat.
+       */
+      erase?: boolean;
+      /**
        * Push the view in on the message box before this draft is typed, and
        * hold it there. The view eases back out once the owner finally sends
        * something — so the room watches her write, and only then sees where

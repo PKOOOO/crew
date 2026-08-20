@@ -139,6 +139,24 @@
   }
 }
 
+/*
+ * A comment leaving. It collapses as it fades, so the stack closes over it
+ * instead of holding an invisible gap where it used to be — the mirror of
+ * the arrival above.
+ */
+@keyframes tiktok-comment-out {
+  from {
+    max-height: 460px;
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    max-height: 0;
+    opacity: 0;
+    transform: translateY(-18px);
+  }
+}
+
 /* Swiping up to the next post: the new one climbs in from below. */
 @keyframes tiktok-swipe-up {
   from {
@@ -168,6 +186,59 @@
     text-shadow:
       0 0 22px rgba(0, 168, 132, 0.75),
       0 0 8px rgba(0, 168, 132, 0.55);
+  }
+}
+
+/* The oversized pointer clicking: a ring goes out from its tip. */
+@keyframes wa-click-ring {
+  0% {
+    opacity: 0.85;
+    transform: scale(0.15);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1);
+  }
+}
+
+/* The held-message menu opening out from the point that was pressed. */
+@keyframes wa-menu-in {
+  from {
+    opacity: 0;
+    transform: scale(0.86) translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* Message info sliding up over the chat. */
+@keyframes wa-info-in {
+  from {
+    opacity: 0;
+    transform: translateY(40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/*
+ * The read-times on Message info. They all carry the same hour, so they all
+ * pulse together — the screen beats once a second with the same number.
+ * Anchored left so the text grows away from the avatar rather than sliding.
+ */
+@keyframes wa-time-pulse {
+  0%,
+  100% {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.14);
   }
 }
 

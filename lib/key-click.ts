@@ -14,7 +14,7 @@
  * clip on repeat, and so overlapping presses need no pool of audio elements.
  */
 
-export type KeyClickVariant = "tap" | "soft";
+export type KeyClickVariant = "tap" | "soft" | "click";
 export type KeyClick = (variant?: KeyClickVariant) => void;
 
 /** Noise source length. The envelope cuts it far shorter than this. */
@@ -48,8 +48,10 @@ export function createKeyClick(): KeyClick {
         }
       }
 
-      // Backspace is the same key, hit lighter.
+      // Backspace is the same key, hit lighter. A mouse button is a harder,
+      // brighter snap than a key — same burst, wider band, more level.
       const soft = variant === "soft";
+      const mouse = variant === "click";
       // Per-key drift, so a fast run never sounds like one sample on repeat.
       const drift = 0.92 + Math.random() * 0.16;
 
@@ -64,13 +66,24 @@ export function createKeyClick(): KeyClick {
 
       const stripHiss = ctx.createBiquadFilter();
       stripHiss.type = "lowpass";
-      stripHiss.frequency.value = (soft ? HIGH_CUT_HZ * 0.75 : HIGH_CUT_HZ) * drift;
+      const band = soft
+        ? HIGH_CUT_HZ * 0.75
+        : mouse
+          ? HIGH_CUT_HZ * 1.9
+          : HIGH_CUT_HZ;
+      stripHiss.frequency.value = band * drift;
       stripHiss.Q.value = 0.5;
 
       const gain = ctx.createGain();
       gain.gain.setValueAtTime(0.0001, now);
-      gain.gain.exponentialRampToValueAtTime(soft ? 0.07 : 0.13, now + 0.001);
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + DECAY_S);
+      gain.gain.exponentialRampToValueAtTime(
+        soft ? 0.07 : mouse ? 0.3 : 0.13,
+        now + 0.001,
+      );
+      gain.gain.exponentialRampToValueAtTime(
+        0.0001,
+        now + (mouse ? DECAY_S * 1.4 : DECAY_S),
+      );
 
       source
         .connect(stripBody)

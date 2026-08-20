@@ -16,7 +16,7 @@ import type { LockscreenEvent } from "@/types/scene";
 
 export type LockscreenScreenProps = {
   events: LockscreenEvent[];
-  /** The scene's clock, 24-hour ("23:43"). Omitted = live clock. */
+  /** The scene's clock, 12-hour ("11:43 PM"). Omitted = live clock. */
   time?: string;
   /** The scene's date line, e.g. "Sunday 19 July". Omitted = today. */
   date?: string;

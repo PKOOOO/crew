@@ -10,6 +10,7 @@ import GroupInfoScreen from "@/components/apps/GroupInfoScreen";
 import ChatListScreen from "@/components/apps/ChatListScreen";
 import FlashScreen from "@/components/apps/FlashScreen";
 import ImageScreen from "@/components/apps/ImageScreen";
+import ReadByScreen from "@/components/apps/ReadByScreen";
 
 export type PhoneFrameProps = {
   scene: Scene;
@@ -201,7 +202,9 @@ function Screen({
           headerStatus={scene.headerStatus}
           textScale={scene.textScale}
           composerTime={scene.composerTime}
+          keySound={scene.keySound}
           focus={scene.focus}
+          inspect={scene.inspect}
           autoStart={autoStart}
           // The chat latches its run at mount, so it needs telling directly.
           paused={paused}
@@ -237,6 +240,8 @@ function Screen({
           video={scene.video}
           likesSound={scene.likesSound}
           soundtrack={scene.soundtrack}
+          photos={scene.photos}
+          photoMs={scene.photoMs}
           reactions={scene.reactions}
           maxComments={scene.maxComments}
           commentScale={scene.commentScale}
@@ -252,6 +257,19 @@ function Screen({
           notes={scene.notes}
           noteTitle={scene.noteTitle}
           noteDate={scene.noteDate}
+          autoStart={playing}
+          onFinished={onFinished}
+        />
+      );
+    case "readby":
+      return (
+        <ReadByScreen
+          text={scene.text}
+          timestamp={scene.timestamp}
+          readBy={scene.readBy}
+          deliveredTo={scene.deliveredTo}
+          scrollMs={scene.scrollMs}
+          sweeps={scene.sweeps ?? 4}
           autoStart={playing}
           onFinished={onFinished}
         />
@@ -313,9 +331,14 @@ function StatusBar({
     return () => clearInterval(tick);
   }, []);
 
+  // 12-hour, to match the clocks written into the scenes and the timestamps
+  // on the messages themselves.
   const shownTime =
     time ??
-    now.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+    now.toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+    });
 
   return (
     <div

@@ -21,6 +21,17 @@ export type TikTokEvent =
       username?: string;
       /** Likes already on the post — it is somebody else's, not landing live. */
       likes?: number;
+      /**
+       * The track this post is set to (path under /public). It starts from
+       * the top as the post arrives and stops when the next one does — a
+       * feed's sound, one song per clip. The clip itself plays silent.
+       */
+      audio?: string;
+      /**
+       * Playback rate for the clip. Below 1 is slow motion; the song is
+       * unaffected and plays at its own speed. Defaults to 1.
+       */
+      rate?: number;
       /** How long to sit on it before the next event. */
       duration: number;
     }
@@ -85,6 +96,8 @@ export type FocusBeat = {
   messageId?: string;
   /** Fades in to the left of that message's timestamp. */
   label?: string;
+  /** Pulse that timestamp once the push-in lands. Off unless asked for. */
+  glow?: boolean;
   /**
    * Crawl the whole conversation top to bottom over this many ms first, so
    * every message is read before the push-in. A chat that already fits the
@@ -93,6 +106,11 @@ export type FocusBeat = {
   scrollMs?: number;
   /** Beat held on the top of the chat before that crawl starts, ms. */
   scrollDelay?: number;
+  /**
+   * id of the message the crawl opens on, sitting at the top of the view.
+   * Omitted, it starts from the very beginning of the conversation.
+   */
+  scrollFrom?: string;
   /** Hold after the read-through, before the move starts, ms. Default 2500. */
   delay?: number;
   /** Ceiling on the fitted scale, so a short bubble can't fill the wall. */
@@ -107,6 +125,33 @@ export type FocusBeat = {
   timeDelay?: number;
   /** Breathing room left around the bubble, px. Defaults to 90. */
   margin?: number;
+};
+
+/** One person on the Message info screen. */
+export type InfoRow = {
+  name: string;
+  /** When they read it, e.g. "19/07/2026 at 23:43". */
+  time: string;
+};
+
+/**
+ * After a focus beat has landed, an oversized pointer walks to the message,
+ * holds it, and opens Message info — so the room watches somebody find out
+ * that every single one of them had already read it.
+ */
+export type InspectBeat = {
+  /** Hold after the push-in settles before the pointer appears, ms. */
+  delay?: number;
+  /** Who read it, in order. */
+  readBy: InfoRow[];
+  /**
+   * How long the Message info screen takes to crawl from the message down to
+   * the last name. Everything on it is sized for a hall, so the list is
+   * taller than the screen and is read on the way past. Defaults to 20000.
+   */
+  scrollMs?: number;
+  /** Who it only reached. */
+  deliveredTo?: InfoRow[];
 };
 
 /** A chat held at the top of the list, above anything that lands. */
@@ -206,8 +251,9 @@ type SceneBase = {
   id: string;
   label: string;
   /**
-   * Clock the phone shows for this scene, 24-hour ("23:43"). Keeps the status
-   * bar honest against the timestamps inside the scene. Omitted = live clock.
+   * Clock the phone shows for this scene, 12-hour ("11:43 PM"). Keeps the
+   * status bar honest against the timestamps inside the scene, which are
+   * written the same way. Omitted = live clock.
    */
   statusTime?: string;
   /** Date under the lockscreen clock, e.g. "Sunday 19 July". */
@@ -244,11 +290,18 @@ export type Scene =
        * ever carries the hour.
        */
       composerTime?: string;
+      /** Key clicks as she types. On unless the scene turns them off. */
+      keySound?: boolean;
       /**
        * After the scene settles, push in on one message and let a line of
        * text fade in beside its timestamp.
        */
       focus?: FocusBeat;
+      /**
+       * After that push-in, a pointer walks in, holds the message and opens
+       * Message info. Needs a focus beat with a messageId to aim at.
+       */
+      inspect?: InspectBeat;
     })
   | (SceneBase & {
       appType: "chatlist";
@@ -282,6 +335,14 @@ export type Scene =
        * The clips play silent while it does.
        */
       soundtrack?: string;
+      /**
+       * A reel of photos behind the UI, each scrolling up to replace the last
+       * and looping for as long as the scene is held. Runs on its own clock,
+       * so comments keep arriving over the top of it.
+       */
+      photos?: string[];
+      /** How long each photo is held, ms. Defaults to 2000. */
+      photoMs?: number;
       /** Live reactions floating up the right edge, e.g. ["❤️", "🔥"]. */
       reactions?: string[];
       /**
@@ -314,6 +375,23 @@ export type Scene =
       size?: number;
       /** How long it is held before the scene reports itself done, ms. */
       hold?: number;
+    })
+  | (SceneBase & {
+      /**
+       * WhatsApp's Message info on its own — the message, and everyone who
+       * read it, sweeping up and down.
+       */
+      appType: "readby";
+      /** The message echoed at the top. */
+      text: string;
+      /** Its timestamp, e.g. "11:43 PM". */
+      timestamp: string;
+      readBy: InfoRow[];
+      deliveredTo?: InfoRow[];
+      /** How long one pass down the list takes, ms. */
+      scrollMs?: number;
+      /** Passes to make: 4 is down, up, down, up. Defaults to 4. */
+      sweeps?: number;
     })
   | (SceneBase & {
       /** One picture on a black screen — no app, no chrome. */

@@ -9,7 +9,16 @@ import {
   type RefObject,
 } from "react";
 import type { ChatEvent, ChatListItem } from "@/types/chat";
-import type { FocusBeat } from "@/types/scene";
+import type { FocusBeat, InspectBeat } from "@/types/scene";
+import {
+  MENU_HEIGHT,
+  MENU_PAD_Y,
+  MENU_ROW_HEIGHT,
+  MENU_WIDTH,
+  MessageInfoScreen,
+  MessageMenu,
+  Pointer,
+} from "@/components/MessageInspect";
 import MessageBubble from "@/components/MessageBubble";
 import TypingIndicator from "@/components/TypingIndicator";
 import { resolveSenderColor } from "@/lib/sender-colors";
@@ -60,6 +69,30 @@ const SENT_TONE_SRC = "/sent.mp3";
  * a push-in to settle before letting anything else happen.
  */
 const PANEL_EASE_MS = 2600;
+
+/*
+ * The inspect beat: how long the pointer takes to walk to the message, to the
+ * menu row, and how long it rests either side of a press.
+ */
+const POINTER_TO_MESSAGE_MS = 600;
+const POINTER_TO_ROW_MS = 360;
+const POINTER_SETTLE_MS = 110;
+const PRESS_MS = 110;
+/**
+ * The first press is a *hold*, not a click — that is how the menu is opened
+ * on a real phone, and a hold makes no sound. Only choosing a row from the
+ * menu clicks, so the beat lands one click rather than two in quick
+ * succession, which the ear hears as a double.
+ */
+const HOLD_MS = 460;
+/** Beat between the menu opening and the pointer setting off for its row. */
+const MENU_OPEN_MS = 150;
+/**
+ * The message column's own transition. Keep in sync with the
+ * `duration-[1600ms]` class on the column wrapper — nothing can be measured
+ * against the bubble until the push-in has stopped moving it.
+ */
+const COLUMN_EASE_MS = 1600;
 
 /** How far in the view moves on a `zoom` draft, and the gap left at its left. */
 const DRAFT_ZOOM_SCALE = 1.9;
@@ -206,8 +239,15 @@ export type ChatPanelProps = {
    * the hour can appear — and a focus beat closes in on it.
    */
   composerTime?: string;
+  /** Key clicks as the owner types. On unless a scene turns them off. */
+  keySound?: boolean;
   /** Push in on one message once the scene has settled. */
   focus?: FocusBeat;
+  /**
+   * After that push-in, an oversized pointer walks to the message, holds it,
+   * and opens Message info.
+   */
+  inspect?: InspectBeat;
   onMessage?: (message: VisibleMessage) => void;
   /** Called once when the script has played to the end. */
   onFinished?: () => void;
@@ -264,7 +304,9 @@ export default function ChatPanel({
   paused = false,
   textScale = 1,
   composerTime,
+  keySound = true,
   focus,
+  inspect,
   onMessage,
   onFinished,
 }: ChatPanelProps) {
@@ -274,6 +316,11 @@ export default function ChatPanel({
   const [typingIsVoice, setTypingIsVoice] = useState(false);
   /** What the phone's owner currently has typed in the input box. */
   const [draft, setDraft] = useState("");
+  /**
+   * She has written the whole thing and stopped. Not the same as the script
+   * being over — what happens after she stops is the point of these scenes.
+   */
+  const [draftComplete, setDraftComplete] = useState(false);
   /** null = not started; a number identifies the current playback run. */
   const [runId, setRunId] = useState<number | null>(autoStart ? 1 : null);
   const [finished, setFinished] = useState(false);
@@ -287,6 +334,13 @@ export default function ChatPanel({
   const [panelTransform, setPanelTransform] = useState<string | null>(null);
   /** The composer's timestamp is the subject of the beat: make it glow. */
   const [composerTimeLit, setComposerTimeLit] = useState(false);
+  /** Where the oversized pointer is, and what it is doing. */
+  const [pointer, setPointer] = useState<{ x: number; y: number } | null>(null);
+  const [pointerTravelMs, setPointerTravelMs] = useState(POINTER_TO_MESSAGE_MS);
+  const [pressing, setPressing] = useState(false);
+  const [menuAt, setMenuAt] = useState<{ x: number; y: number } | null>(null);
+  const [menuLit, setMenuLit] = useState(false);
+  const [infoShown, setInfoShown] = useState(false);
   const bodyRef = useRef<HTMLDivElement>(null);
   const columnRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLElement>(null);
@@ -363,11 +417,13 @@ export default function ChatPanel({
   /** Plays a tone from the given ref/src pair, restarting it if still playing. */
   const playFrom = useCallback(
     (ref: RefObject<HTMLAudioElement | null>, src: string) => {
-      if (typeof window === "undefined") return;
+      if (typeof window === "undefined") return null;
       const tone = (ref.current ??= new Audio(src));
       tone.currentTime = 0;
       // Rejects when the browser blocks autoplay — nothing to do about it.
       void tone.play().catch(() => {});
+      // Handed back so a caller can stop exactly the sound it started.
+      return tone;
     },
     [],
   );
@@ -427,7 +483,7 @@ export default function ChatPanel({
         if (cancelled) return false;
         typed += character;
         setDraft(typed);
-        playKeyTick();
+        if (keySound) playKeyTick();
       }
       return true;
     };
@@ -456,9 +512,15 @@ export default function ChatPanel({
       setCurrentlyTyping(null);
       setTypingIsVoice(false);
       setDraft("");
+      setDraftComplete(false);
       setFinished(false);
       setPanelTransform(null);
       setComposerTimeLit(false);
+      setPointer(null);
+      setPressing(false);
+      setMenuAt(null);
+      setMenuLit(false);
+      setInfoShown(false);
 
       // True while the view is held in on the message box by a `zoom` draft.
       let pushedIn = false;
@@ -494,6 +556,22 @@ export default function ChatPanel({
           // The phone's owner types into the input box, not a bubble.
           if (isSelf(event.sender)) {
             const text = event.draft ?? "";
+
+            // Taking it back: nothing is typed, what is there just goes — and
+            // the view lets go with her. The pull-out starts on the first
+            // letter to disappear, so the room is drawn back out of the
+            // close-up as the message unwrites itself.
+            if (event.erase) {
+              setPanelTransform(null);
+              setComposerTimeLit(false);
+              if (
+                text &&
+                !(await eraseDraft(text, event.duration / text.length))
+              )
+                return;
+              continue;
+            }
+
             if (!text) {
               await wait(event.duration);
               continue;
@@ -501,6 +579,7 @@ export default function ChatPanel({
             // 55% typing, 20% hesitating, 25% erasing.
             if (!(await typeDraft(text, (event.duration * 0.55) / text.length)))
               return;
+            setDraftComplete(true);
             await wait(event.duration * 0.2);
             if (cancelled) return;
             if (!event.keepDraft) {
@@ -636,6 +715,7 @@ export default function ChatPanel({
     playTone,
     playSentTone,
     playKeyTick,
+    keySound,
     composerPushIn,
   ]);
 
@@ -664,25 +744,54 @@ export default function ChatPanel({
     const body = bodyRef.current;
     if (!body) return;
 
-    // Sit on the top of the conversation first, so the room settles into the
-    // scene before anything starts moving.
     body.scrollTop = 0;
     let frame = 0;
+    let begin: ReturnType<typeof setTimeout> | undefined;
 
-    const begin = setTimeout(() => {
-      const startedAt = performance.now();
+    const crawlFrom = (openAt: number) => {
+      // Sit there first, so the room settles into the scene before anything
+      // starts moving.
+      body.scrollTop = openAt;
 
-      const step = (now: number) => {
-        const distance = body.scrollHeight - body.clientHeight;
-        const progress = Math.min(1, (now - startedAt) / readMs);
-        body.scrollTop = distance * progress;
-        if (progress < 1) frame = requestAnimationFrame(step);
+      begin = setTimeout(() => {
+        const startedAt = performance.now();
+
+        const step = (now: number) => {
+          const distance = body.scrollHeight - body.clientHeight;
+          const progress = Math.min(1, (now - startedAt) / readMs);
+          body.scrollTop = openAt + Math.max(0, distance - openAt) * progress;
+          if (progress < 1) frame = requestAnimationFrame(step);
+        };
+        frame = requestAnimationFrame(step);
+      }, focus.scrollDelay ?? 0);
+    };
+
+    // A named message may not be on screen yet: in a scene whose history is
+    // laid down by the playback engine, nothing is in the DOM at mount. So
+    // wait for it rather than measuring an empty chat and starting at the
+    // top — which is exactly what a single measurement here would do.
+    if (!focus.scrollFrom) {
+      crawlFrom(0);
+    } else {
+      const deadline = performance.now() + 4000;
+      const place = () => {
+        const from = body.querySelector<HTMLElement>(
+          `[data-message-id="${focus.scrollFrom}"]`,
+        );
+        if (from) {
+          crawlFrom(Math.max(0, from.offsetTop - body.offsetTop));
+        } else if (performance.now() < deadline) {
+          frame = requestAnimationFrame(place);
+        } else {
+          // Never turned up — a wrong id shouldn't cost the scene its crawl.
+          crawlFrom(0);
+        }
       };
-      frame = requestAnimationFrame(step);
-    }, focus.scrollDelay ?? 0);
+      frame = requestAnimationFrame(place);
+    }
 
     return () => {
-      clearTimeout(begin);
+      if (begin) clearTimeout(begin);
       cancelAnimationFrame(frame);
     };
   }, [focus, runId, paused]);
@@ -748,7 +857,7 @@ export default function ChatPanel({
    * way in on it and let it glow.
    */
   useEffect(() => {
-    if (!finished || paused || runId === null) return;
+    if (!draftComplete || paused || runId === null) return;
     if (!focus || focus.messageId) return;
 
     const timer = setTimeout(() => {
@@ -759,7 +868,106 @@ export default function ChatPanel({
     }, focus.timeDelay ?? 2000);
 
     return () => clearTimeout(timer);
-  }, [finished, paused, runId, focus, centreOn]);
+  }, [draftComplete, paused, runId, focus, centreOn]);
+
+  /*
+   * The inspect beat. Once the push-in has landed, an oversized pointer walks
+   * to the message, holds it, and opens Message info — the audience watching
+   * somebody else operate the phone.
+   */
+  useEffect(() => {
+    if (!inspect || focusTransform === null || paused || runId === null) return;
+
+    let cancelled = false;
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    const at = (ms: number, run: () => void) => {
+      timers.push(
+        setTimeout(() => {
+          if (!cancelled) run();
+        }, ms),
+      );
+    };
+
+    // The bubble is still travelling under its own transition, so nothing is
+    // measured until that has finished.
+    const start = COLUMN_EASE_MS + (inspect.delay ?? 1400);
+
+    at(start, () => {
+      const panel = panelRef.current;
+      const row = columnRef.current?.querySelector<HTMLElement>(
+        `[data-message-id="${focus?.messageId}"]`,
+      );
+      if (!panel || !row) return;
+
+      const view = panel.getBoundingClientRect();
+      const bubble = (row.firstElementChild as HTMLElement | null) ?? row;
+      const box = bubble.getBoundingClientRect();
+
+      // Land a little in from the bubble's left edge, on its middle line —
+      // where a thumb would actually come down.
+      const target = {
+        x: box.left - view.left + box.width * 0.28,
+        y: box.top - view.top + box.height / 2,
+      };
+
+      // Enter from off the bottom-right corner. Painted there first, then
+      // sent to the target on a later frame, so the walk is a transition and
+      // not a jump.
+      setPointerTravelMs(0);
+      setPointer({ x: view.width + 160, y: view.height + 160 });
+
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          if (cancelled) return;
+          setPointerTravelMs(POINTER_TO_MESSAGE_MS);
+          setPointer(target);
+        });
+      });
+
+      // Everything below is scheduled from here, which is already `start` ms
+      // into the beat — so these offsets are relative to this moment, never
+      // absolute, or each step would be pushed a further `start` down the line.
+      const held = POINTER_TO_MESSAGE_MS + POINTER_SETTLE_MS;
+
+      // Hold the message down. Silent: a long press has nothing to click.
+      at(held, () => setPressing(true));
+      at(held + HOLD_MS, () => setPressing(false));
+
+      // The menu opens from the point that was pressed, kept inside the frame.
+      const menuX = Math.min(target.x, view.width - MENU_WIDTH - 40);
+      const menuY = Math.min(
+        Math.max(40, target.y - MENU_HEIGHT * 0.35),
+        view.height - MENU_HEIGHT - 40,
+      );
+      at(held + HOLD_MS, () => setMenuAt({ x: menuX, y: menuY }));
+
+      // Then across to the first row — Message info. This one is a click.
+      const toRow = held + HOLD_MS + MENU_OPEN_MS;
+      at(toRow, () => {
+        setPointerTravelMs(POINTER_TO_ROW_MS);
+        setPointer({
+          x: menuX + MENU_WIDTH * 0.42,
+          y: menuY + MENU_PAD_Y + MENU_ROW_HEIGHT / 2,
+        });
+        setMenuLit(true);
+      });
+
+      const pressRow = toRow + POINTER_TO_ROW_MS + POINTER_SETTLE_MS;
+      // Silent. The arrow dipping and the ring going out carry the press on
+      // their own — a sound here was landing as a double against the hold.
+      at(pressRow, () => setPressing(true));
+      at(pressRow + PRESS_MS, () => {
+        setPressing(false);
+        setMenuAt(null);
+        setInfoShown(true);
+      });
+    });
+
+    return () => {
+      cancelled = true;
+      for (const timer of timers) clearTimeout(timer);
+    };
+  }, [inspect, focusTransform, paused, runId, focus]);
 
   /* ----------------------------- auto-scroll ----------------------------- */
   useEffect(() => {
@@ -769,6 +977,11 @@ export default function ChatPanel({
     const body = bodyRef.current;
     if (body) body.scrollTop = body.scrollHeight;
   }, [shownMessages, currentlyTyping, focus]);
+
+  /** The message the beat is about — its text is echoed on the info screen. */
+  const focusedMessage = focus?.messageId
+    ? shownMessages.find((message) => message.id === focus.messageId)
+    : undefined;
 
   const isSelfSender = (sender: string) =>
     sender === "me" || (!!selfName && sender === selfName);
@@ -791,7 +1004,7 @@ export default function ChatPanel({
   return (
     <section
       ref={panelRef}
-      className="flex h-full min-w-0 flex-1 flex-col transition-transform duration-[2600ms] ease-in-out"
+      className="relative flex h-full min-w-0 flex-1 flex-col transition-transform duration-[2600ms] ease-in-out"
       style={{
         transformOrigin: "0 0",
         transform: panelTransform ?? "translate(0px, 0px) scale(1)",
@@ -877,7 +1090,7 @@ export default function ChatPanel({
             pixels would overshoot by exactly textScale. Kept apart, the
             measurement and the move agree at any scale. */}
         <div
-          className="transition-transform duration-[2200ms] ease-in-out"
+          className="transition-transform duration-[1600ms] ease-in-out"
           style={{
             transformOrigin: "0 0",
             transform: focusTransform ?? "translate(0px, 0px) scale(1)",
@@ -910,6 +1123,7 @@ export default function ChatPanel({
                 metaPrefixShown={
                   focus?.messageId === message.id && focusTransform !== null
                 }
+                metaGlow={focus?.glow === true}
                 timestamp={message.timestamp}
                 isDeleted={message.isDeleted}
                 isFirstInGroup={message.isFirstInGroup}
@@ -989,6 +1203,34 @@ export default function ChatPanel({
           {draft ? <SendIcon /> : <MicIcon />}
         </IconButton>
       </div>
+
+      {/* The inspect beat sits above the whole chat: menu, info screen, and
+          the pointer on top of both. */}
+      {menuAt ? (
+        <MessageMenu x={menuAt.x} y={menuAt.y} highlight={menuLit} />
+      ) : null}
+
+      {infoShown && inspect && focusedMessage ? (
+        <MessageInfoScreen
+          text={focusedMessage.text}
+          timestamp={focusedMessage.timestamp}
+          readBy={inspect.readBy}
+          deliveredTo={inspect.deliveredTo}
+          senderColors={senderColors}
+          scrollMs={inspect.scrollMs}
+          paused={paused}
+        />
+      ) : null}
+
+      {pointer ? (
+        <Pointer
+          x={pointer.x}
+          y={pointer.y}
+          travelMs={pointerTravelMs}
+          clicking={pressing}
+          visible
+        />
+      ) : null}
     </section>
   );
 }

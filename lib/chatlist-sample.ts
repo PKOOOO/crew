@@ -54,7 +54,7 @@ export const chatListSample: ChatListItem[] = [
   },
   {
     id: "kevin",
-    name: "Kevin",
+    name: "Kevina",
     avatarColor: "#8c6f5f",
     lastMessage: "Legendary style!",
     time: "16:20",

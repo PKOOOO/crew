@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import type { ChatEvent, ChatListItem } from "@/types/chat";
-import type { FocusBeat } from "@/types/scene";
+import type { FocusBeat, InspectBeat } from "@/types/scene";
 import ChatPanel from "@/components/ChatPanel";
 import { buildSenderColors, GROUP_AVATAR } from "@/lib/sender-colors";
 
@@ -21,8 +21,12 @@ export type WhatsAppScreenProps = {
   textScale?: number;
   /** Timestamp shown at the end of the draft in the message box. */
   composerTime?: string;
+  /** Key clicks as she types. On unless the scene turns them off. */
+  keySound?: boolean;
   /** Push in on one message once the scene has settled. */
   focus?: FocusBeat;
+  /** Pointer walks in, holds the message and opens Message info. */
+  inspect?: InspectBeat;
   autoStart?: boolean;
   /** Called once when the script has played to the end. */
   onFinished?: () => void;
@@ -42,7 +46,9 @@ export default function WhatsAppScreen({
   paused = false,
   textScale,
   composerTime,
+  keySound,
   focus,
+  inspect,
   autoStart = false,
   onFinished,
 }: WhatsAppScreenProps) {
@@ -89,7 +95,9 @@ export default function WhatsAppScreen({
         paused={paused}
         textScale={textScale}
         composerTime={composerTime}
+        keySound={keySound}
         focus={focus}
+        inspect={inspect}
         onFinished={onFinished}
       />
     </div>

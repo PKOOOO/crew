@@ -27,6 +27,15 @@ export type TikTokScreenProps = {
    * feed sounds when one song carries post after post.
    */
   soundtrack?: string;
+  /**
+   * A reel of photos behind the UI (paths under /public), each scrolling up
+   * to replace the last and looping for as long as the scene is held. Runs on
+   * its own clock, independent of the event script — so the comments keep
+   * arriving over the top of it rather than being cleared by a swipe.
+   */
+  photos?: string[];
+  /** How long each photo is held, ms. Defaults to 2000. */
+  photoMs?: number;
   /** Live reactions floating up the right edge, e.g. ["❤️", "🔥"]. */
   reactions?: string[];
   /** How many comments stay on screen before the oldest drops off. */
@@ -50,7 +59,10 @@ const LIKE_POP_INTERVAL_MS = 320;
  */
 const MAX_VISIBLE_COMMENTS = 5;
 
-type Comment = { author: string; text: string };
+/** id is the comment's place in the whole run, so React keeps each element
+ *  as the visible window slides past it — otherwise the arrival and departure
+ *  animations would be handed to the wrong boxes. */
+type Comment = { id: number; author: string; text: string };
 
 /**
  * Fixed launch settings for the floating reactions — deliberately not random,
@@ -86,6 +98,8 @@ export default function TikTokScreen({
   video,
   likesSound = "/likes.mp3",
   soundtrack,
+  photos,
+  photoMs = 2000,
   reactions,
   maxComments = MAX_VISIBLE_COMMENTS,
   commentScale = 1,
@@ -100,9 +114,17 @@ export default function TikTokScreen({
   const [author, setAuthor] = useState(username);
   /** Bumped per swipe so the slide-in animation retriggers. */
   const [swipe, setSwipe] = useState(0);
+  /** Which photo of the reel is up, if the scene has one. */
+  const [photo, setPhoto] = useState(0);
+  /** The song this post is set to, and how fast the clip runs under it. */
+  const [track, setTrack] = useState<string | undefined>(undefined);
+  const [rate, setRate] = useState(1);
+  /** This post's own sound is off — something else is carrying the scene. */
+  const [silent, setSilent] = useState(Boolean(soundtrack));
   const onFinishedRef = useRef(onFinished);
   const likesSoundRef = useRef<HTMLAudioElement | null>(null);
   const soundtrackRef = useRef<HTMLAudioElement | null>(null);
+  const trackRef = useRef<HTMLAudioElement | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const backdropRef = useRef<HTMLVideoElement>(null);
 
@@ -125,7 +147,14 @@ export default function TikTokScreen({
     }
 
     main.currentTime = 0;
-    if (backdrop) backdrop.currentTime = 0;
+    main.playbackRate = rate;
+    // Set here rather than as a prop: a swipe remounts the element, and React
+    // does not reliably carry `muted` onto a freshly mounted video.
+    main.muted = silent;
+    if (backdrop) {
+      backdrop.currentTime = 0;
+      backdrop.playbackRate = rate;
+    }
 
     // Autoplay with sound is blocked until the page has been clicked. The
     // display's "tap to enable sound" gate handles that — but if it is still
@@ -135,7 +164,61 @@ export default function TikTokScreen({
       void main.play().catch(() => {});
     });
     void backdrop?.play().catch(() => {});
-  }, [autoStart, clip, swipe]);
+  }, [autoStart, clip, swipe, rate, silent]);
+
+  /*
+   * The song this post is set to. Starts from the top as the post arrives and
+   * stops when the next one does — and it is never given a playback rate, so
+   * a clip in slow motion still runs to a song at its proper speed.
+   */
+  useEffect(() => {
+    if (!track) {
+      // This post brought no song — whatever was playing stops, so the clip's
+      // own sound is the only thing left.
+      trackRef.current?.pause();
+      return;
+    }
+
+    const song = (trackRef.current ??= new Audio());
+    if (song.src !== new URL(track, window.location.href).href) {
+      song.src = track;
+    }
+    song.loop = true;
+
+    if (!autoStart) {
+      song.pause();
+      return;
+    }
+
+    song.currentTime = 0;
+    void song.play().catch(() => {});
+
+    return () => song.pause();
+  }, [track, autoStart]);
+
+  /*
+   * The photo reel. Its own clock, looping for as long as the scene runs —
+   * and pre-loaded up front so a 7MB frame never arrives half-drawn.
+   */
+  useEffect(() => {
+    if (!photos?.length) return;
+
+    for (const src of photos) {
+      const probe = new window.Image();
+      probe.src = src;
+    }
+
+    if (!autoStart) return;
+
+    // No reset here: the panel is remounted per scene, so the reel already
+    // starts at the first photo, and a paused scene picks up where it left
+    // off rather than snapping back.
+    const tick = setInterval(
+      () => setPhoto((index) => (index + 1) % photos.length),
+      photoMs,
+    );
+    return () => clearInterval(tick);
+  }, [photos, photoMs, autoStart]);
 
   /*
    * The track under the scene. Its deps deliberately exclude the clip: a
@@ -182,6 +265,9 @@ export default function TikTokScreen({
       setLikes(0);
       setClip(video);
       setAuthor(username);
+      setTrack(undefined);
+      setRate(1);
+      setSilent(Boolean(soundtrack));
       let likesNow = 0;
       let captionShown = false;
 
@@ -193,6 +279,11 @@ export default function TikTokScreen({
           // and the screen slides up to meet it.
           if (event.video !== undefined) setClip(event.video);
           if (event.username !== undefined) setAuthor(event.username);
+          // A post with its own song plays silent under it; a post with no
+          // song of its own keeps whatever sound the clip itself carries.
+          setTrack(event.audio);
+          setRate(event.rate ?? 1);
+          setSilent(Boolean(soundtrack) || Boolean(event.audio));
           setCaption(event.caption ?? null);
           setComments([]);
           likesNow = event.likes ?? 0;
@@ -217,7 +308,7 @@ export default function TikTokScreen({
           if (cancelled) return;
           setComments((previous) => [
             ...previous,
-            { author: event.author, text: event.text },
+            { id: previous.length, author: event.author, text: event.text },
           ]);
           continue;
         }
@@ -266,12 +357,17 @@ export default function TikTokScreen({
       if (timer) clearTimeout(timer);
       cancelAnimationFrame(frame);
       likesSoundRef.current?.pause();
+      trackRef.current?.pause();
     };
-  }, [events, autoStart, video, username, likesSound]);
+  }, [events, autoStart, video, username, likesSound, soundtrack]);
 
   const saves = Math.round(likes * 0.5);
   const shares = Math.round(likes * 0.05);
-  const visibleComments = comments.slice(-maxComments);
+  // One more than fits is kept mounted: that extra is the one on its way
+  // out, and it needs to still be in the tree to be animated out of it.
+  const visibleComments = comments.slice(-(maxComments + 1));
+  const leavingId =
+    comments.length > maxComments ? visibleComments[0]?.id : undefined;
 
   return (
     <div className="relative h-full w-full overflow-hidden bg-black text-white">
@@ -288,7 +384,30 @@ export default function TikTokScreen({
             : undefined
         }
       >
-        {clip ? (
+        {photos?.length ? (
+          // Same treatment the clips get: contained at full height over a
+          // blurred, cropped copy of itself, so a landscape photo fills a
+          // landscape frame without bars or a crop.
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={photos[photo]}
+              alt=""
+              aria-hidden
+              className="absolute inset-0 h-full w-full scale-110 object-cover blur-2xl brightness-[0.45]"
+            />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              key={photo}
+              src={photos[photo]}
+              alt=""
+              className="absolute inset-0 h-full w-full object-contain"
+              style={{
+                animation: "tiktok-swipe-up 0.45s cubic-bezier(0.2,0,0.1,1)",
+              }}
+            />
+          </>
+        ) : clip ? (
           <>
             <video
               ref={backdropRef}
@@ -304,8 +423,6 @@ export default function TikTokScreen({
               src={clip}
               playsInline
               preload="auto"
-              // Silent when a soundtrack is carrying the scene.
-              muted={Boolean(soundtrack)}
               className="absolute inset-0 h-full w-full object-contain"
             />
           </>
@@ -406,15 +523,18 @@ export default function TikTokScreen({
           className="flex min-h-0 flex-1 flex-col justify-end gap-4 overflow-hidden"
           style={commentScale === 1 ? undefined : { zoom: commentScale }}
         >
-          {visibleComments.map((comment, index) => (
+          {visibleComments.map((comment) => (
             <div
-              key={`${comment.author}-${index}`}
+              key={comment.id}
               className="w-fit max-w-full rounded-2xl bg-black/50 px-7 py-4 text-[46px] font-bold leading-snug backdrop-blur-sm"
               // Grows out of nothing at the bottom of the stack, which eases
-              // everything above it up the screen rather than jumping.
+              // everything above it up the screen rather than jumping — then
+              // collapses and fades the same way on its way out.
               style={{
                 animation:
-                  "tiktok-comment-in 0.9s cubic-bezier(0.16, 1, 0.3, 1)",
+                  comment.id === leavingId
+                    ? "tiktok-comment-out 0.9s cubic-bezier(0.4, 0, 0.2, 1) forwards"
+                    : "tiktok-comment-in 0.9s cubic-bezier(0.16, 1, 0.3, 1)",
               }}
             >
               <span className="font-semibold text-white/70">
