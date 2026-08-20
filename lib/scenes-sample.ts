@@ -1073,6 +1073,9 @@ export const scenesSample: Scene[] = [
     appType: "image",
     label: "3 · The classroom drawing — DON'T FORGET TO SMILE",
     src: "/drawing.jpeg",
+    // Edge to edge — the drawing takes the whole screen rather than sitting
+    // inside a black border.
+    fill: true,
     delay: 2000,
     hold: 12000,
   },

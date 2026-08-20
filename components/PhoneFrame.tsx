@@ -281,6 +281,7 @@ function Screen({
           delay={scene.delay}
           hold={scene.hold}
           caption={scene.caption}
+          fill={scene.fill}
           autoStart={playing}
           onFinished={onFinished}
         />

@@ -404,4 +404,6 @@ export type Scene =
       hold?: number;
       /** Optional line under the picture. */
       caption?: string;
+      /** Fill the frame edge to edge, cropping to its shape. */
+      fill?: boolean;
     });

@@ -11,6 +11,12 @@ export type ImageScreenProps = {
   hold?: number;
   /** Optional line under the picture. */
   caption?: string;
+  /**
+   * Fill the frame edge to edge rather than sitting inside it. The picture
+   * is cropped to the frame's shape instead of being letterboxed — for a
+   * drawing that should own the whole screen.
+   */
+  fill?: boolean;
   autoStart?: boolean;
   onFinished?: () => void;
 };
@@ -33,6 +39,7 @@ export default function ImageScreen({
   delay = 1200,
   hold = HOLD_MS,
   caption,
+  fill = false,
   autoStart = false,
   onFinished,
 }: ImageScreenProps) {
@@ -59,15 +66,24 @@ export default function ImageScreen({
   }, [autoStart, delay, hold]);
 
   return (
-    <div className="flex h-full w-full flex-col items-center justify-center gap-8 overflow-hidden bg-black px-10 py-10">
+    <div
+      className={`flex h-full w-full flex-col items-center justify-center overflow-hidden bg-black ${
+        fill ? "" : "gap-8 px-10 py-10"
+      }`}
+    >
       {/* Plain img, not next/image: the file's own proportions decide the
-          shape, and contain keeps a landscape drawing whole in a landscape
-          frame without cropping a corner off it. */}
+          shape. Contained, a landscape drawing stays whole in a landscape
+          frame with nothing cropped; filled, it takes the screen and the
+          frame decides what is left out. */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={src}
         alt=""
-        className="min-h-0 flex-1 object-contain"
+        className={
+          fill
+            ? "h-full w-full object-cover"
+            : "min-h-0 flex-1 object-contain"
+        }
         style={{
           opacity: shown ? 1 : 0,
           transform: `scale(${drifting ? 1.06 : shown ? 1 : 0.88})`,
