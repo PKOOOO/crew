@@ -12,6 +12,10 @@ export type MessageBubbleProps = {
   image?: string;
   /** Rendered width of the image card in px. Defaults to 420. */
   imageWidth?: number;
+  /** Fill the chat area: full width, no bubble padding. */
+  imageFull?: boolean;
+  /** Ceiling on a full-bleed photo, so it cannot outgrow the chat area. */
+  imageMaxHeight?: number;
   /** Intrinsic width ÷ height, so the box is right before the file loads. */
   imageAspect?: number;
   /** Voice note audio (path under /public); renders a voice-note bubble. */
@@ -48,6 +52,8 @@ export default function MessageBubble({
   text,
   image,
   imageWidth = 420,
+  imageFull = false,
+  imageMaxHeight,
   imageAspect,
   audio,
   audioAutoPlay = false,
@@ -65,6 +71,9 @@ export default function MessageBubble({
 }: MessageBubbleProps) {
   const outgoing = sender === "me";
   const emojiOnly = !isDeleted && !image && !audio && isEmojiOnly(text);
+  // A picture that is the message, not an attachment to one: it takes the
+  // whole width and the bubble stops being a frame around it.
+  const fullImage = imageFull && !isDeleted && !!image;
 
   return (
     <div
@@ -73,7 +82,12 @@ export default function MessageBubble({
       style={{ marginTop: isFirstInGroup ? 20 : 6 }}
     >
       <div
-        className={`relative max-w-[min(72%,900px)] ${
+        className={`relative ${
+          // Shrink to the picture. A full-bleed photo is height-led, so it is
+          // narrower than the column — a full-width bubble would leave a bank
+          // of empty white down the side of it.
+          fullImage ? "w-fit max-w-full" : "max-w-[min(72%,900px)]"
+        } ${
           emojiOnly
             ? ""
             : `rounded-2xl shadow-[0_1px_0.5px_rgba(11,20,26,0.13)] ${
@@ -90,7 +104,7 @@ export default function MessageBubble({
         {/* Tail: only on the first bubble of a group */}
         {!emojiOnly && isFirstInGroup ? <Tail outgoing={outgoing} /> : null}
 
-        <div className={emojiOnly ? "" : "px-6 py-4"}>
+        <div className={emojiOnly || fullImage ? "" : "px-6 py-4"}>
           {senderName && isFirstInGroup && !outgoing ? (
             <div
               className="text-[32px] font-bold leading-tight"
@@ -111,7 +125,11 @@ export default function MessageBubble({
               senderColor={outgoing ? undefined : senderColor}
             />
           ) : !isDeleted && image ? (
-            <div className="relative pb-1">
+            // w-fit on a full-bleed photo: the bubble is full width but the
+            // picture is height-led and narrower, so without this the
+            // timestamp would pin itself to the bubble's right edge instead
+            // of the photo's corner.
+            <div className={`relative ${fullImage ? "w-fit" : "pb-1"}`}>
               {/* Width is set; height comes from the file's own proportions,
                   reserved up front by the measured aspect ratio so the bubble
                   never lands flat and then jump. next/image is no use here —
@@ -121,12 +139,24 @@ export default function MessageBubble({
               <img
                 src={image}
                 alt=""
-                className="block rounded-md"
-                style={{
-                  width: imageWidth,
-                  aspectRatio: imageAspect || undefined,
-                  height: imageAspect ? undefined : "auto",
-                }}
+                className={`block ${fullImage ? "rounded-2xl" : "rounded-md"}`}
+                style={
+                  // Full-bleed with a ceiling: height leads and the aspect
+                  // ratio decides the width, so the whole picture is on
+                  // screen rather than the top of it being scrolled away.
+                  fullImage && imageMaxHeight
+                    ? {
+                        height: imageMaxHeight,
+                        width: "auto",
+                        maxWidth: "100%",
+                        aspectRatio: imageAspect || undefined,
+                      }
+                    : {
+                        width: fullImage ? "100%" : imageWidth,
+                        aspectRatio: imageAspect || undefined,
+                        height: imageAspect ? undefined : "auto",
+                      }
+                }
               />
               {text ? (
                 <div className="relative mt-2" style={{ width: imageWidth }}>

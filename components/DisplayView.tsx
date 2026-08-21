@@ -213,7 +213,7 @@ export default function DisplayView() {
         // to sweep in, playback and its sound halt where they are.
         paused={screenPhase === "closing" || screenPhase === "off"}
         onSceneFinished={handleSceneFinished}
-        sizeClass="h-[100dvh] w-screen md:h-[94vh] md:w-[96vw]"
+        sizeClass="h-[100dvh] w-screen"
         screenPhase={done ? "off" : screenPhase}
       />
 

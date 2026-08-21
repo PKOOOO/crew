@@ -10,6 +10,12 @@ export type ChatEvent =
       /** Rendered width of the image card in px. Defaults to 420. */
       imageWidth?: number;
       /**
+       * Let the picture take the whole chat area: the bubble goes full width
+       * with no padding around it, and the photo fills it edge to edge. For a
+       * shot that is the message rather than an attachment to one.
+       */
+      imageFull?: boolean;
+      /**
        * Voice note audio (path under /public), e.g. "/Aisha.ogg". Renders a
        * voice-note bubble instead of text, and plays as it lands.
        */

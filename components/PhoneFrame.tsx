@@ -31,9 +31,8 @@ export type PhoneFrameProps = {
   batteryPercent?: number;
   signalBars?: 1 | 2 | 3 | 4;
   /**
-   * Tailwind classes sizing the tablet against the viewport. Pass both a
-   * height and a width (or an aspect-*) — e.g. "h-[80vh] w-[90vw]" to
-   * stretch the tablet across the screen.
+   * Tailwind classes sizing the screen against the viewport. Defaults to the
+   * whole thing — the projection is the app, not a picture of a device.
    */
   sizeClass?: string;
   /**
@@ -48,9 +47,9 @@ export const CRT_CLOSE_MS = 1400;
 export const CRT_OPEN_MS = 1600;
 
 /**
- * Desktop/projection: iPad-style landscape tablet with bezels and a camera
- * dot. Mobile (< md): the bezel disappears and the app fills the viewport
- * edge-to-edge, the way applications look on an actual phone.
+ * The screen, edge to edge. No bezel, no rounded corners, no camera dot: on a
+ * projection the audience is meant to be looking at the app itself, and a
+ * drawn-on device frame only steals height from it.
  */
 export default function PhoneFrame({
   scene,
@@ -60,7 +59,7 @@ export default function PhoneFrame({
   statusTime,
   batteryPercent = 82,
   signalBars = 4,
-  sizeClass = "h-[100dvh] w-screen md:h-[min(94vh,1250px)] md:w-auto md:aspect-[4/3]",
+  sizeClass = "h-[100dvh] w-screen",
   screenPhase = "idle",
 }: PhoneFrameProps) {
   // Full-bleed apps get a translucent overlay status bar with white text.
@@ -79,13 +78,8 @@ export default function PhoneFrame({
     scene.appType !== "flash" && scene.appType !== "image";
 
   return (
-    <div
-      className={`relative ${sizeClass} shrink-0 rounded-none bg-black p-0 shadow-none md:rounded-[42px] md:p-[16px] md:shadow-[0_24px_60px_rgba(0,0,0,0.45)]`}
-    >
-      {/* Front camera, centered in the top bezel */}
-      <div className="absolute left-1/2 top-[6px] z-30 hidden h-1.5 w-1.5 -translate-x-1/2 rounded-full bg-[#1f2a33] ring-1 ring-[#3a4a57] md:block" />
-
-      <div className="relative flex h-full w-full flex-col overflow-hidden rounded-none bg-white md:rounded-[26px]">
+    <div className={`relative ${sizeClass} shrink-0 bg-black`}>
+      <div className="relative flex h-full w-full flex-col overflow-hidden bg-white">
         <Curtain phase={screenPhase} />
 
         {showStatusBar ? (
@@ -218,6 +212,7 @@ function Screen({
           unreadTotal={scene.unreadTotal}
           groupTotal={scene.groupTotal}
           pinned={scene.pinned}
+          spotlight={scene.spotlight}
           autoStart={playing}
           onFinished={onFinished}
         />

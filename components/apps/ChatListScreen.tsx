@@ -32,6 +32,13 @@ export type ChatListScreenProps = {
   groupTotal?: number;
   /** Group kept at the top of the list, above everything that lands. */
   pinned?: PinnedChat;
+  /**
+   * Take the chats one at a time: each one rises over the list on its own,
+   * at a size that reads from the back of a hall, holds, and eases away
+   * again before the next arrives. The list is still built underneath, so
+   * what is left at the end is the whole screen.
+   */
+  spotlight?: boolean;
   autoStart?: boolean;
   /** Called once when all rows have appeared. */
   onFinished?: () => void;
@@ -52,17 +59,22 @@ type Row = {
 const RING_SRC = "/call.mp3";
 const VIBRATE_SRC = "/vibrate.mp3";
 
+/** How long a chat is left alone on screen before the next one arrives. */
+const SPOT_HOLD_MS = 3200;
+
 export default function ChatListScreen({
   events,
   unreadTotal = 139,
   groupTotal = 23,
   pinned,
+  spotlight = false,
   autoStart = false,
   onFinished,
 }: ChatListScreenProps) {
   const [rows, setRows] = useState<Row[]>([]);
   /** Who is calling right now, if anyone — drives the accept/decline banner. */
   const [incomingCall, setIncomingCall] = useState<string | null>(null);
+  const listRef = useRef<HTMLDivElement>(null);
   const onFinishedRef = useRef(onFinished);
   const soundRef = useRef<HTMLAudioElement | null>(null);
   const ringRef = useRef<HTMLAudioElement | null>(null);
@@ -71,6 +83,13 @@ export default function ChatListScreen({
   useEffect(() => {
     onFinishedRef.current = onFinished;
   }, [onFinished]);
+
+  /* The newest chat is the one being read, so the list follows it down. */
+  useEffect(() => {
+    const list = listRef.current;
+    if (!list) return;
+    list.scrollTo({ top: list.scrollHeight, behavior: "smooth" });
+  }, [rows]);
 
   /* --------------------------- playback engine --------------------------- */
   useEffect(() => {
@@ -103,6 +122,13 @@ export default function ChatListScreen({
     const play = async () => {
       setRows([]);
       setIncomingCall(null);
+
+      // The group they were all laughing in is already there, pinned, filling
+      // the screen. It is left alone before anything lands on top of it.
+      if (spotlight && pinned) {
+        await wait(SPOT_HOLD_MS);
+        if (cancelled) return;
+      }
 
       let autoId = 0;
       for (const event of events) {
@@ -165,6 +191,12 @@ export default function ChatListScreen({
             highlight: event.highlight ?? false,
           },
         ]);
+
+        // Left alone on screen before the next chat pushes it up.
+        if (spotlight) {
+          await wait(SPOT_HOLD_MS);
+          if (cancelled) return;
+        }
       }
 
       if (!cancelled) onFinishedRef.current?.();
@@ -180,9 +212,29 @@ export default function ChatListScreen({
       ringRef.current?.pause();
       vibrateRef.current?.pause();
     };
-  }, [events, autoStart]);
+  }, [events, autoStart, spotlight, pinned]);
 
   const colors = buildSenderColors(events.map((event) => event.name));
+
+  /*
+   * Sized for a hall when the scene asks for it: one chat fills the screen
+   * and the next one pushes it up, rather than five sitting in a list nobody
+   * past the third row can read.
+   */
+  const avatarClass = spotlight
+    ? "h-[380px] w-[380px] text-[150px]"
+    : "h-[86px] w-[86px] text-[34px] md:h-[104px] md:w-[104px] md:text-[42px]";
+  const nameClass = spotlight
+    ? "text-[124px]"
+    : "text-[36px] md:text-[44px]";
+  const previewClass = spotlight ? "text-[76px]" : "text-[26px] md:text-[32px]";
+  const timeClass = spotlight ? "text-[64px]" : "text-[22px] md:text-[28px]";
+  const rowClass = spotlight
+    ? "gap-16 py-14"
+    : "gap-6 py-6 md:gap-8 md:py-7";
+  const tickClass = spotlight
+    ? "h-14 w-20"
+    : "h-6 w-8 md:h-8 md:w-11";
 
   return (
     <div className="relative flex h-full w-full flex-col overflow-hidden bg-white text-[#111b21]">
@@ -237,8 +289,14 @@ export default function ChatListScreen({
           </div>
         </div>
 
-        {/* Title + search share a row once there is width for it */}
-        <div className="mt-2 flex shrink-0 flex-col gap-3 md:flex-row md:items-center md:gap-8">
+        {/* Title + search share a row once there is width for it. Both are
+            dropped when one chat is filling the screen — every pixel they
+            take is a pixel off the thing the room is meant to read. */}
+        <div
+          className={`mt-2 flex shrink-0 flex-col gap-3 md:flex-row md:items-center md:gap-8 ${
+            spotlight ? "hidden" : ""
+          }`}
+        >
           <h1 className="text-[44px] font-bold leading-tight md:text-[52px]">
             Chats
           </h1>
@@ -254,7 +312,11 @@ export default function ChatListScreen({
         </div>
 
         {/* Filter pills + archived share a row on wide screens */}
-        <div className="mt-3 flex shrink-0 flex-col gap-3 border-b border-[#e9edef] pb-3 md:flex-row md:items-center md:justify-between">
+        <div
+          className={`mt-3 flex shrink-0 flex-col gap-3 border-b border-[#e9edef] pb-3 md:flex-row md:items-center md:justify-between ${
+            spotlight ? "hidden" : ""
+          }`}
+        >
           <div className="flex items-center gap-2.5 overflow-hidden">
             <Pill active>All</Pill>
             <Pill>Unread {unreadTotal}</Pill>
@@ -269,26 +331,30 @@ export default function ChatListScreen({
         </div>
 
         {/* Chat rows — full width of the landscape screen */}
-        <div className="min-h-0 flex-1 overflow-y-auto">
+        <div ref={listRef} className="min-h-0 flex-1 overflow-y-auto">
           {/* The group sits pinned above everything, there from the start. */}
           {pinned ? (
-            <div className="flex w-full items-center gap-6 border-b border-[#e9edef] py-6 md:gap-8 md:py-7">
+            <div
+              className={`flex w-full items-center border-b border-[#e9edef] ${rowClass}`}
+            >
               <Image
                 src={GROUP_AVATAR}
                 alt=""
-                width={104}
-                height={104}
+                width={380}
+                height={380}
                 unoptimized
-                className="h-[86px] w-[86px] shrink-0 rounded-full object-cover md:h-[104px] md:w-[104px]"
+                className={`shrink-0 rounded-full object-cover ${avatarClass}`}
               />
 
               <div className="min-w-0 flex-1">
                 <div className="flex items-baseline gap-3">
-                  <span className="min-w-0 flex-1 truncate text-[36px] font-bold leading-tight md:text-[44px]">
+                  <span
+                    className={`min-w-0 flex-1 truncate font-bold leading-tight ${nameClass}`}
+                  >
                     {pinned.name}
                   </span>
                   <span
-                    className={`shrink-0 text-[22px] md:text-[28px] ${
+                    className={`shrink-0 ${timeClass} ${
                       pinned.unreadCount
                         ? "font-semibold text-[#1da851]"
                         : "text-[#667781]"
@@ -300,7 +366,7 @@ export default function ChatListScreen({
 
                 <div className="mt-1 flex items-center gap-2.5">
                   <span
-                    className={`min-w-0 flex-1 truncate text-[26px] md:text-[32px] ${
+                    className={`min-w-0 flex-1 truncate ${previewClass} ${
                       pinned.unreadCount
                         ? "font-semibold text-[#111b21]"
                         : "text-[#667781]"
@@ -309,7 +375,9 @@ export default function ChatListScreen({
                     {pinned.preview}
                   </span>
                   <Pin
-                    className="h-7 w-7 shrink-0 rotate-45 text-[#8696a0] md:h-8 md:w-8"
+                    className={`shrink-0 rotate-45 text-[#8696a0] ${
+                      spotlight ? "h-14 w-14" : "h-7 w-7 md:h-8 md:w-8"
+                    }`}
                     fill="currentColor"
                     strokeWidth={0}
                   />
@@ -326,11 +394,13 @@ export default function ChatListScreen({
           {rows.map((row) => (
             <div
               key={row.id}
-              className="flex w-full items-center gap-6 border-b border-[#e9edef] py-6 md:gap-8 md:py-7"
-              style={{ animation: "wa-slide-up 0.35s ease-out" }}
+              className={`flex w-full items-center border-b border-[#e9edef] ${rowClass}`}
+              style={{
+                animation: `wa-slide-up ${spotlight ? "0.7s" : "0.35s"} cubic-bezier(0.2, 0, 0.1, 1)`,
+              }}
             >
               <span
-                className="flex h-[86px] w-[86px] shrink-0 items-center justify-center rounded-full text-[34px] font-bold text-white md:h-[104px] md:w-[104px] md:text-[42px]"
+                className={`flex shrink-0 items-center justify-center rounded-full font-bold text-white ${avatarClass}`}
                 style={{ backgroundColor: resolveSenderColor(row.name, colors) }}
               >
                 {row.name.slice(0, 1).toUpperCase()}
@@ -338,12 +408,16 @@ export default function ChatListScreen({
 
               <div className="min-w-0 flex-1">
                 <div className="flex items-baseline gap-3">
-                  <span className="min-w-0 flex-1 truncate text-[36px] font-bold leading-tight md:text-[44px]">
+                  <span
+                    className={`min-w-0 flex-1 truncate font-bold leading-tight ${nameClass}`}
+                  >
                     {row.name}
                   </span>
                   <span
-                    className={`shrink-0 text-[22px] md:text-[28px] ${
-                      row.unreadCount ? "font-semibold text-[#1da851]" : "text-[#667781]"
+                    className={`shrink-0 ${timeClass} ${
+                      row.unreadCount
+                        ? "font-semibold text-[#1da851]"
+                        : "text-[#667781]"
                     }`}
                   >
                     {row.time}
@@ -353,20 +427,24 @@ export default function ChatListScreen({
                 <div className="mt-1 flex items-center gap-2.5">
                   {row.kind === "missed-call" ? (
                     <PhoneMissed
-                      className="h-6 w-6 shrink-0 text-[#f15c6d] md:h-8 md:w-8"
+                      className={`shrink-0 text-[#f15c6d] ${
+                        spotlight ? "h-16 w-16" : "h-6 w-6 md:h-8 md:w-8"
+                      }`}
                       strokeWidth={2.5}
                     />
                   ) : row.kind === "ringing" ? (
                     <PhoneIncoming
-                      className="h-6 w-6 shrink-0 text-[#25d366] md:h-8 md:w-8"
+                      className={`shrink-0 text-[#25d366] ${
+                        spotlight ? "h-16 w-16" : "h-6 w-6 md:h-8 md:w-8"
+                      }`}
                       strokeWidth={2.5}
                     />
                   ) : row.ticks !== "none" ? (
-                    <Ticks status={row.ticks} />
+                    <Ticks status={row.ticks} sizeClass={tickClass} />
                   ) : null}
 
                   {row.kind === "ringing" ? (
-                    <span className="min-w-0 flex-1 truncate text-[26px] md:text-[32px]">
+                    <span className={`min-w-0 flex-1 truncate ${previewClass}`}>
                       <span className="font-bold text-[#25d366]">
                         {row.preview}
                       </span>
@@ -374,7 +452,7 @@ export default function ChatListScreen({
                     </span>
                   ) : (
                     <span
-                      className={`min-w-0 flex-1 truncate text-[26px] md:text-[32px] ${
+                      className={`min-w-0 flex-1 truncate ${previewClass} ${
                         row.unreadCount
                           ? "font-semibold text-[#111b21]"
                           : "text-[#667781]"
@@ -395,7 +473,11 @@ export default function ChatListScreen({
         </div>
 
         {/* Bottom nav */}
-        <div className="mx-auto mb-2 mt-2 flex w-full max-w-[820px] shrink-0 items-center justify-around rounded-full bg-[#f0f2f5] px-2 py-2.5">
+        <div
+          className={`mx-auto mb-2 mt-2 w-full max-w-[820px] shrink-0 items-center justify-around rounded-full bg-[#f0f2f5] px-2 py-2.5 ${
+            spotlight ? "hidden" : "flex"
+          }`}
+        >
           <NavItem icon={<Bell className="h-7 w-7" strokeWidth={2} />} label="Updates" />
           <NavItem
             icon={<Phone className="h-7 w-7" strokeWidth={2} />}
@@ -424,11 +506,17 @@ export default function ChatListScreen({
 }
 
 /** Delivered (grey) vs read (blue) ticks, as shown on a chat row. */
-function Ticks({ status }: { status: "sent" | "delivered" | "read" }) {
+function Ticks({
+  status,
+  sizeClass = "h-6 w-8 md:h-8 md:w-11",
+}: {
+  status: "sent" | "delivered" | "read";
+  sizeClass?: string;
+}) {
   return (
     <svg
       viewBox="0 0 18 12"
-      className={`h-6 w-8 shrink-0 md:h-8 md:w-11 ${
+      className={`shrink-0 ${sizeClass} ${
         status === "read" ? "text-[#53bdeb]" : "text-[#8696a0]"
       }`}
       fill="none"

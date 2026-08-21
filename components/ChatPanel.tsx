@@ -196,6 +196,8 @@ export type VisibleMessage = {
   text: string;
   image?: string;
   imageWidth?: number;
+  /** Fill the chat area: full width, no bubble padding. */
+  imageFull?: boolean;
   /** Intrinsic aspect ratio, so the bubble reserves the right height. */
   imageAspect?: number;
   audio?: string;
@@ -278,6 +280,7 @@ function settleScript(script: ChatEvent[]): VisibleMessage[] {
         text: event.text,
         image: event.image,
         imageWidth: event.imageWidth,
+        imageFull: event.imageFull,
         audio: event.audio,
         timestamp: event.time ?? nowTime(),
         isFirstInGroup: !last || last.sender !== event.sender,
@@ -321,6 +324,12 @@ export default function ChatPanel({
    * being over — what happens after she stops is the point of these scenes.
    */
   const [draftComplete, setDraftComplete] = useState(false);
+  /**
+   * How tall the chat area is, in the column's own units. A full-bleed photo
+   * is sized against this: at full width it is taller than the screen, and
+   * the auto-scroll to the bottom would take the top off it.
+   */
+  const [chatHeight, setChatHeight] = useState(0);
   /** null = not started; a number identifies the current playback run. */
   const [runId, setRunId] = useState<number | null>(autoStart ? 1 : null);
   const [finished, setFinished] = useState(false);
@@ -640,6 +649,7 @@ export default function ChatPanel({
             text: event.text,
             image: event.image,
             imageWidth: event.imageWidth,
+            imageFull: event.imageFull,
             imageAspect: aspect || undefined,
             audio: event.audio,
             timestamp: event.time ?? nowTime(),
@@ -969,6 +979,19 @@ export default function ChatPanel({
     };
   }, [inspect, focusTransform, paused, runId, focus]);
 
+  /* The chat area's height, watched — the projector's shape is not known in
+   * advance, and a full-bleed photo has to be cut to fit whatever it is. */
+  useEffect(() => {
+    const body = bodyRef.current;
+    if (!body) return;
+
+    const measure = () => setChatHeight(body.clientHeight);
+    const observer = new ResizeObserver(measure);
+    observer.observe(body);
+
+    return () => observer.disconnect();
+  }, []);
+
   /* ----------------------------- auto-scroll ----------------------------- */
   useEffect(() => {
     // A read-through drives scrollTop itself; snapping to the bottom here
@@ -1108,6 +1131,12 @@ export default function ChatPanel({
                 text={message.text}
                 image={message.image}
                 imageWidth={message.imageWidth}
+                imageFull={message.imageFull}
+                // Room for the sender's name and the gaps around the card,
+                // in the same units the column is laid out in.
+                imageMaxHeight={
+                  chatHeight ? chatHeight / textScale - 60 : undefined
+                }
                 imageAspect={message.imageAspect}
                 audio={message.audio}
                 // A flashback's notes are already old news — they don't

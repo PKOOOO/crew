@@ -246,7 +246,7 @@ export default function NotesScreen({
           {/* The note body — titled first line, then the note itself */}
           {openTitle ? (
             <h1
-              className="mt-2 inline-block shrink-0 self-start break-words border-b-[5px] text-[64px] font-extrabold leading-tight"
+              className="mt-2 inline-block shrink-0 self-start break-words border-b-[7px] text-[108px] font-extrabold leading-tight"
               style={{ color: ACCENT, borderColor: ACCENT }}
             >
               {openTitle}
@@ -259,7 +259,7 @@ export default function NotesScreen({
                   lifts them. Deep bottom padding so a 104px descender has
                   room and the last line ends clear of the edge. */}
               <ul
-                className="flex flex-col gap-14 pb-24"
+                className="flex flex-col gap-16 pb-32"
                 style={{ paddingTop: leadIn }}
               >
                 {entries.map((entry, index) => {
@@ -269,8 +269,8 @@ export default function NotesScreen({
                       key={index}
                       className={`break-words pb-2 ${
                         isLast
-                          ? "text-[132px] font-bold leading-[1.3]"
-                          : "text-[96px] font-semibold leading-[1.3] opacity-75"
+                          ? "text-[168px] font-bold leading-[1.3]"
+                          : "text-[124px] font-semibold leading-[1.3] opacity-75"
                       }`}
                       style={isLast ? { color: ACCENT } : undefined}
                     >

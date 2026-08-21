@@ -37,16 +37,8 @@ import type {
 /* 1 — The group lights up about the school day. Everyone has something to
  * say. Except Maya: all she manages is 😊 */
 const scene1Whatsapp: ChatEvent[] = [
-  // Tash shouts first, then the photo lands on its own — the class picture
-  // gets the screen to itself.
-  {
-    type: "message",
-    id: "s1-1",
-    sender: "Tash",
-    text: "BEST CLASS EVER!❤️❤️❤️",
-    time: "1:03 PM",
-    delay: 2400,
-  },
+  // The photo lands first and takes the whole chat area — the class picture
+  // is the message. Tash's shout follows it.
   {
     type: "message",
     id: "s1-1b",
@@ -54,10 +46,15 @@ const scene1Whatsapp: ChatEvent[] = [
     // No caption — the timestamp sits on the photo, the way WhatsApp does it.
     text: "",
     image: "/group.jpeg",
-    // Sized before the scene's 2.2 zoom, so this lands at ~790px on screen.
-    // It is 16:9 rather than the near-square it replaces, so it can be wider
-    // without the card growing past a single screen.
-    imageWidth: 360,
+    imageFull: true,
+    time: "1:03 PM",
+    delay: 2400,
+  },
+  {
+    type: "message",
+    id: "s1-1",
+    sender: "Tash",
+    text: "BEST CLASS EVER!❤️❤️❤️",
     time: "1:03 PM",
     delay: 2600,
   },
@@ -89,18 +86,29 @@ const scene1Whatsapp: ChatEvent[] = [
     type: "message",
     id: "s1-5",
     sender: "Aisha",
-    text: "❤️❤️❤️❤️❤️",
+    text: "❤️❤️",
     time: "1:05 PM",
     delay: 2600,
   },
-  // Everyone has something to say. Maya manages a smiley.
+  // Everyone has something to say. Maya sits over the keyboard, and what
+  // she manages is a smiley — the room watches it appear in the box and sit
+  // there before she finally sends it.
+  {
+    type: "typing",
+    sender: "Maya",
+    duration: 1200,
+    draft: "😊",
+    keepDraft: true,
+  },
+  // An empty draft is the engine simply holding: the smiley stays in the box.
+  { type: "typing", sender: "Maya", duration: 2600, draft: "" },
   {
     type: "message",
     id: "s1-6",
     sender: "Maya",
     text: "😊",
     time: "1:05 PM",
-    delay: 4000,
+    delay: 400,
   },
 ];
 
@@ -988,8 +996,8 @@ const scene15Notes: NotesEvent[] = [
   {
     type: "drafts",
     // Bigger type means more distance to travel, so the duration goes up with
-    // it — otherwise the same 56s would read as a faster crawl.
-    duration: 70000,
+    // it — otherwise the same time would read as a faster crawl.
+    duration: 92000,
     items: [
       "I keep smiling so nobody asks.",
       "Everyone thinks I'm the fun one.",
@@ -1050,9 +1058,11 @@ export const scenesSample: Scene[] = [
     appType: "whatsapp",
     label: "1 · THE CREW — BEST CLASS EVER (Maya sends only 😊)",
     chatName: "THE CREW 🔥",
-    // Two cards fill the screen at a time; each new one scrolls the oldest
-    // off the top.
-    textScale: 2.2,
+    // One card a screen. Bigger than the other group scenes on purpose: each
+    // reaction to the photo lands on its own and is pushed off by the next.
+    // The photo itself is unaffected — its ceiling is measured in these same
+    // units, so it still fills the chat area whatever the scale is.
+    textScale: 3,
     events: scene1Whatsapp,
   },
   {
@@ -1175,6 +1185,9 @@ export const scenesSample: Scene[] = [
       preview: "Tash: 😂😂😂😂😂😂",
       time: "8:11 PM",
     },
+    // One chat at a time, each held up on its own — the list is unreadable
+    // from a hall at its natural size.
+    spotlight: true,
     events: scene10ChatList,
   },
   titleCard("title-5", 15),

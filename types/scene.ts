@@ -311,6 +311,12 @@ export type Scene =
       groupTotal?: number;
       /** Group kept at the top of the list. */
       pinned?: PinnedChat;
+      /**
+       * Take the chats one at a time: each rises over the list on its own, at
+       * a size that reads from the back of a hall, holds, and eases away
+       * before the next arrives.
+       */
+      spotlight?: boolean;
     })
   | (SceneBase & {
       appType: "groupinfo";
